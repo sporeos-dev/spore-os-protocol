@@ -1,4 +1,4 @@
-# Spore Protocol Specification
+# Spore OS Protocol Specification
 **Version:** v1d0  
 **Schema:** `SPORE/v1d0`  
 **Date:** 2026-03-04  
@@ -6,13 +6,11 @@
 
 ## 1. Overview
 
-Spore is a **local IPC protocol**. It provides a socket interface that lets applications discover each other and exchange messages — without knowing anything about each other's implementation.
+Spore OS is a **local IPC protocol**. It provides a socket interface that lets applications discover each other and exchange messages — without knowing anything about each other's implementation.
 
 The core idea is **treating applications as functions**: a node exposes capabilities, and the hub routes calls between them. A node can be a CLI tool, a background daemon, a GUI application, or a shell script.
 
-Spore is not a framework, not a service mesh, and is explicitly not performance-sensitive. It is a simple, human-readable message bus for local processes.
-
-Spore has six pillars: (1) Request/Response, (2) Broadcast, (3) Pulse, (4) Witness, (5) Guard, (6) Edit. v1d0 implements **Pillar 1: Request/Response** and **Pillar 4: Witness**. Request/Response is the smallest useful slice — one thing working end-to-end. Witness provides a fire-and-forget side channel for logging and auditability from day one.
+Spore OS is not a framework, not a service mesh, and is explicitly not performance-sensitive. It is a simple, human-readable message bus for local processes.
 
 ---
 
@@ -57,7 +55,7 @@ The manifest is **read-only at runtime**. Changes require a node restart.
 
 ### 3.1 Socket
 
-Spore uses **Unix domain sockets** (UDS) for local communication.
+Spore OS uses **Unix domain sockets** (UDS) for local communication.
 
 - **macOS / Linux:** Unix domain socket at a conventional path
 - **Windows:** Unix domain socket via the Windows UDS implementation
@@ -95,8 +93,6 @@ OK
 The hub looks up the installed manifest for `com.example.clock` and marks the node as connected. If the node ID is not known, the hub responds with an error.
 
 If a node disconnects after handshake, it reverts to installed-but-not-connected in the registry.
-
-> **Future evolution:** The handshake protocol may be extended. How a node declares and negotiates handshake capabilities will be described within the manifest itself in future versions.
 
 ---
 
@@ -281,8 +277,8 @@ These are protocol-defined codes used with the `error` flag. Nodes should prefer
 | Code | Meaning |
 |---|---|
 | `UnknownFailure` | An error occurred but the cause cannot be determined |
-| `SporeFailure` | A failure internal to the Spore hub or runtime. **Hub-only** — the hub blocks this code if a node emits it. |
-| `ProtocolFailure` | A violation of the Spore wire protocol |
+| `SporeFailure` | A failure internal to the Spore OS hub or runtime. **Hub-only** — the hub blocks this code if a node emits it. |
+| `ProtocolFailure` | A violation of the Spore OS wire protocol |
 | `ConnectionFailure` | The connection between parties could not be established or was lost |
 
 *General:*
@@ -372,7 +368,7 @@ The following argument names are reserved by the protocol. They may not be used 
 
 | Keyword | Meaning |
 |---|---|
-| `spore_error` | The error originates from the hub or Spore runtime itself |
+| `spore_error` | The error originates from the hub or Spore OS runtime itself |
 | `node_error` | The error originates from the receiving node |
 | `cast_error` | The error is attributable to the caller (e.g. bad arguments, missing handle) |
 | `capture_error` | The error is attributable to the responder's reply (e.g. malformed response from node) |
@@ -480,23 +476,7 @@ description: Provides time-related functions.
 api: []       # Direct call/response subjects
 errors: []    # Custom node-defined errors this node may emit
 witness: false # If true, this node receives all witness traffic from the hub
-publish: []   # Pub-sub events this node broadcasts
-pulse: []     # Watcher streams this node exposes
-guard: []     # Middleman: permission gates on inbound calls
-edit: []      # Middleman: payload mutation (redactions, key injection)
 ```
-
-In v1d0, `api`, `errors`, and `witness` are active. The remaining sections are recognised names reserved for future pillars. See [FUTURE.md](FUTURE.md) for their design.
-
-| Section | Pillar | Role | v1d0 |
-|---|---|---|---|
-| `api` | 1 — Request/Response | Direct call/response subjects | ✅ |
-| `errors` | 1 — Request/Response | Custom node-defined errors this node may emit | ✅ |
-| `witness` | 4 — Witness | Self-declaration: receive all hub witness traffic (see Section 9) | ✅ |
-| `publish` | 2 — Broadcast | Events this node broadcasts | Future |
-| `pulse` | 3 — Pulse | Ongoing notification streams this node exposes | Future |
-| `guard` | 5 — Guard | Permission gates on inbound calls | Future |
-| `edit` | 6 — Edit | Payload mutation (redactions, key injection) | Future |
 
 ### 8.2 Metadata Fields
 
@@ -506,7 +486,7 @@ In v1d0, `api`, `errors`, and `witness` are active. The remaining sections are r
 | `name` | string | ✅ | Human-readable name |
 | `app` | string | ✅ | How to invoke the application (e.g., `./clock`, `./clock.exe`, `python -m myclock`, `node app.js`). Use `"n/a"` for system nodes. Relative paths are relative to the manifest directory. |
 | `schema` | string | ✅ | Manifest schema version (`SPORE/v1d0`) |
-| `version` | string | | Node API version (`MAJOR.MINOR.PATCH`). Informational; unused in v1d0. |
+| `version` | string | | Node API version (`MAJOR.MINOR.PATCH`). Informational. |
 | `description` | string | ✅ | Short description of the node's purpose |
 | `autostart` | boolean | | If `true`, the hub spawns this node automatically when the hub starts in a headless manner (no UI or interactive context). Default: `false`. Only meaningful if `app` is set to a real executable path. |
 | `witness` | boolean | | If `true`, this node receives all witness traffic from the hub (see Section 9). Default: `false`. |
@@ -749,7 +729,7 @@ The hub intercepts this line before routing (it is never treated as a call or su
 witness message="loaded config" cast=com.example.mynode spore_node spore_time=1744732800000
 ```
 
-The body after the `witness ` prefix is free-form. Nodes are responsible for choosing a format useful to their witnesses. Node witness messages are subject to the same `sensitive` field stripping as observed traffic (see [FUTURE.md](FUTURE.md)).
+The body after the `witness ` prefix is free-form. Nodes are responsible for choosing a format useful to their witnesses.
 
 ### 9.5 Hub Output
 
@@ -778,7 +758,7 @@ The hub exposes subjects for introspection and lifecycle management. Its manifes
 
 ```yaml
 id: dev.sporeos.SPORE
-name: Spore Hub
+name: Spore OS Hub
 app: spore
 schema: SPORE/v1d0
 description: Central router and manifest registry.
@@ -819,4 +799,4 @@ api:
 
 ---
 
-*Spore Protocol v1d0 — March 2026*
+*Spore OS Protocol v1d0 — March 2026*
