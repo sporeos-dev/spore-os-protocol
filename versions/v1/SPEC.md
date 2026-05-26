@@ -8,7 +8,7 @@
 
 Spore is a **local IPC protocol**. It provides a socket interface that lets applications discover each other and exchange messages — without knowing anything about each other's implementation.
 
-The core idea is **treating applications as functions**: a node exposes subjects it can respond to, and the hub routes calls between them. A node can be a CLI tool, a background daemon, a GUI application, or a shell script.
+The core idea is **treating applications as functions**: a node exposes capabilities, and the hub routes calls between them. A node can be a CLI tool, a background daemon, a GUI application, or a shell script.
 
 Spore is not a framework, not a service mesh, and is explicitly not performance-sensitive. It is a simple, human-readable message bus for local processes.
 
@@ -78,7 +78,7 @@ Manifests are authored in **YAML**. The hub reads the YAML file directly.
 
 **Installation** and **connection** are separate concerns.
 
-**Installation** registers a node's manifest with the hub out-of-band — typically via a CLI command that reads the node's YAML manifest file. Installation persists across hub restarts. The hub can route to an installed node's subjects even when the node is not running.
+**Installation** registers a node's manifest with the hub out-of-band — typically via a CLI command that reads the node's YAML manifest file. Installation persists across hub restarts. The hub can route to an installed node's capabilities even when the node is not running.
 
 **Connection** is the runtime identification of a running node. When a node starts, it opens a connection to the hub socket and sends:
 

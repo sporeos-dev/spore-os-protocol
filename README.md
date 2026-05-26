@@ -1,17 +1,18 @@
-# Spore Protocol
+# Spore OS Protocol
 
-A local IPC protocol for application-to-application communication over Unix domain sockets. The core idea: **treat applications as functions**.
+A local IPC protocol for application-to-application communication over Unix domain sockets. The core idea: **applications as functions**.
 
-A node exposes named subjects. The hub routes calls between them.
+Nodes expose capabilities. The hub routes calls between them.
 
-## Contents
+## Versions
 
-| | |
-|---|---|
-| [versions/v1/SPEC.md](versions/v1/SPEC.md) | Protocol specification |
-| [versions/v1/schema/](versions/v1/schema/) | Manifest schema |
-
-**Current:** `SPORE/v1d0` — Pillar 1 (Request/Response) + Pillar 4 (Witness)
+| Versions | Focus | Details |
+| --- | --- | --- |
+| v1 | Request / response | A node sends a request. Another node replies. |
+|  | Core funtionality | Hub, nodes, manifests, communication, etc. |
+|  | Witness | A node that listens for logging and auditability. |
+|  | Core nodes | Command line, shell REPL, witness, logger, dialogs. |
+|  | Go | Client library reference written in Go. |
 
 ## Manifest Schema
 
