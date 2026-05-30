@@ -1,3 +1,8 @@
+<!--
+Copyright 2026 mharr
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Spore OS Protocol Specification
 **Version:** v1d0  
 **Schema:** `SPORE/v1d0`  
