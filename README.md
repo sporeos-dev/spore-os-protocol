@@ -1,3 +1,8 @@
+
+> For project overview, contributing guidelines, code of conduct, security policy,
+> and licensing information, see the
+> [sporeos-dev organization README](https://github.com/sporeos-dev/.github).
+
 # Spore OS Protocol
 
 A local IPC protocol for application-to-application communication over Unix domain sockets. The core idea: **applications as functions**.
