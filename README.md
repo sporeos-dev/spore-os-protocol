@@ -11,18 +11,15 @@ Nodes expose capabilities. The hub routes calls between them.
 
 ## Versions
 
-| Versions | Focus | Details |
+| Version | Status | Description |
 | --- | --- | --- |
-| v1 | Request / response | A node sends a request. Another node replies. |
-|  | Core funtionality | Hub, nodes, manifests, communication, etc. |
-|  | Witness | A node that listens for logging and auditability. |
-|  | Core nodes | Command line, shell REPL, witness, logger, dialogs. |
-|  | Go | Client library reference written in Go. |
+| v1 | Stable | Request/response, hub, manifests, witness, core nodes, Go client library. |
+| v2 | Coming soon | — |
 
 ## Manifest Schema
 
 Add to the top of any node manifest for validation and autocompletion in VS Code:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/sporeos-dev/spore-os-protocol/main/versions/v1/schema/spore.manifest.v1d0.schema.yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/sporeos-dev/spore-os-protocol/main/versions/v1/spore.manifest.v1.schema.yaml
 ```
