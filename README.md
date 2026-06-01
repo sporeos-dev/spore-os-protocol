@@ -11,10 +11,10 @@ Nodes expose capabilities. The hub routes calls between them.
 
 ## Versions
 
-| Version | Status | Description |
-| --- | --- | --- |
-| v1 | Stable | Request/response, hub, manifests, witness, core nodes, Go client library. |
-| v2 | Coming soon | — |
+| Version | Status | Overview | Full Spec |
+| --- | --- | --- | --- |
+| v1 | Stable | [OVERVIEW.md](versions/v1/OVERVIEW.md) | [SPEC.md](versions/v1/SPEC.md) |
+| v2 | Coming soon | — | — |
 
 ## Manifest Schema
 
