@@ -1,7 +1,15 @@
 
+<!-- PREAMBLE BEGIN -->
 > For project overview, contributing guidelines, code of conduct, security policy,
 > and licensing information, see the
 > [sporeos-dev organization README](https://github.com/sporeos-dev/.github).
+
+> [!WARNING]
+> **Alpha Software: Use at Your Own Risk**
+> Spore OS is currently in an alpha state.
+> It is under active development, breaking changes are expected frequently.
+> Do not use in production environments.
+<!-- PREAMBLE FIN -->
 
 # Spore OS Protocol
 
@@ -13,7 +21,7 @@ Nodes expose capabilities. The hub routes calls between them.
 
 | Version | Status | Overview | Full Spec |
 | --- | --- | --- | --- |
-| v1 | Stable | [OVERVIEW.md](versions/v1/OVERVIEW.md) | [SPEC.md](versions/v1/SPEC.md) |
+| v1 | Active development | [OVERVIEW.md](versions/v1/OVERVIEW.md) | [SPEC.md](versions/v1/SPEC.md) |
 | v2 | Coming soon | — | — |
 
 ## Manifest Schema
