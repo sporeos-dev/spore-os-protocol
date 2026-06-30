@@ -36,6 +36,16 @@ properties:
     type: string
     description: "How to invoke this application. Examples: \"./clock\" (Unix/Linux), \"./clock.exe\" (Windows), \"clock.sh\", \"python -m myclock\", \"node app.js\". Use \"n/a\" for system nodes (like the hub) that don't have a separate executable. Relative paths are relative to the manifest directory."
 
+  trust:
+    type: string
+    description: Trust level of the node.
+    enum:
+      - system
+      - developer
+      - trusted
+      - standard
+      - untrusted
+
   version:
     type: string
     description: Node API version in MAJOR.MINOR.PATCH format.
@@ -48,10 +58,8 @@ properties:
     type: string
     description: Spore OS manifest schema version.
     enum:
-      - SPORE/v1d0
-      - SPORE/v1a0
-      - SPORE/v1b0
-      - SPORE/v1
+      - SPORE/v0d1
+      - SPORE/v0d2
 
   description:
     type: string
@@ -72,6 +80,13 @@ properties:
     description: All callable subjects this node exposes.
     items:
       $ref: "#/definitions/api_entry"
+    default: []
+
+  topics:
+    type: array
+    description: All subscribable topics this node exposes.
+    items:
+      $ref: "#/definitions/topic_entry"
     default: []
 
   errors:
@@ -147,12 +162,23 @@ definitions:
       description:
         type: string
 
+  risk:
+    type: string
+    description: Risk level of a capability.
+    enum:
+      - benign
+      - standard
+      - personal
+      - secret
+      - protected
+
   api_entry:
     type: object
     required:
       - name
       - description
       - usage
+      - risk
     additionalProperties: false
     properties:
       name:
@@ -160,11 +186,14 @@ definitions:
         description: Subject name for this entry.
       description:
         type: string
+        description: Description of the entry.
       usage:
         type: array
         items:
           type: string
         description: Example calls showing how to use this subject.
+      risk: 
+        $ref: "#/definitions/risk"
       inputs:
         type: array
         items:
@@ -181,3 +210,31 @@ definitions:
         items:
           type: string
         description: Optional clarifying notes about this API entry. Useful for documenting constraints, mutual exclusivity, or other guidance that complements the structured fields.
+
+  topic_entry:
+    type: object
+    required:
+      - name
+      - description
+      - usage
+      - risk
+    additionalProperties: false
+    properties:
+      name: 
+        type: string
+        description: Subject name for this topic.
+      description:
+        type: string
+        description: Description of the topic.
+      usage: 
+        type: array
+        items: 
+          type: string
+        description: Examples of published calls.
+      risk:
+        $ref: "#/definitions/risk"
+      outputs:
+        type: array
+        items:
+          $ref: "#/definitions/output"
+        description: Possible data
