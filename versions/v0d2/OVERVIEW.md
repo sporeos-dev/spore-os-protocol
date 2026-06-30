@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 # Spore OS Protocol — Overview
-**Version:** v1  
+**Version:** v0d2  
 **Full spec:** [SPEC.md](SPEC.md)
 
 ---
@@ -31,7 +31,8 @@ A local IPC protocol over Unix domain sockets. Applications expose capabilities;
 id: com.example.clock
 name: Clock
 app: ./clock
-schema: SPORE/v1d0
+schema: SPORE/v0d2
+trust: standard
 description: Provides time functions.
 api:
   - name: get_time
@@ -78,13 +79,15 @@ Connected: the node is running and has completed the handshake.
 
 ## Message channels
 
-There are two distinct channels on the protocol:
+There are three distinct channels on the protocol:
 
 **Request / response** — the primary channel. A caller sends a subject with a handle; the hub routes it to the owning node; the node replies. Every call gets exactly one response.
 
-**Witness** — a passive observation channel. The hub sends a copy of every message (calls, responses, hub events) to any node registered as a witness. Fire-and-forget — the hub never waits on witnesses and witnesses never reply.
+**Broadcast** — a publish/subscribe channel. A node publishes to a declared topic; the hub fans out the message to all current subscribers. No handle, no response. Fire-and-forget.
 
-These are independent. A node can be a caller, a receiver, a witness, or any combination.
+**Witness** — a passive observation channel. The hub sends a copy of every message (calls, responses, hub events, and broadcast) to any node registered as a witness. Fire-and-forget — the hub never waits on witnesses and witnesses never reply.
+
+These are independent. A node can be a caller, a receiver, a publisher, a subscriber, a witness, or any combination.
 
 ---
 
@@ -107,6 +110,12 @@ subject [key=value ...] ~handle
 Every error carries exactly one origin flag: `spore_error` (hub), `node_error` (receiver), `cast_error` (caller's fault), or `capture_error` (bad reply from responder).
 
 Every call gets exactly one response. `ok`, `error`, `custom_error`, or `cancelled` — always exactly one.
+
+**Publish (broadcast):**
+```
+publish subject [key=value ...]
+```
+No handle. The hub injects `cast=` (publisher ID) and fans out with `capture=` (subscriber ID) to each subscriber.
 
 ### Example exchange
 ```
@@ -145,6 +154,36 @@ Used for logging, debugging, monitoring. The hub never blocks on witnesses.
 
 ---
 
+## Broadcast
+
+Declare topics in the manifest under `topics`. Publish to them at any time — only the declaring node may publish. Subscribers receive delivered messages via `SPORE.topic.subscribe`.
+
+```
+# Publisher sends:
+publish clock.ticked time="2026-06-30T12:00:00Z"
+
+# Hub delivers to each subscriber:
+publish clock.ticked time="2026-06-30T12:00:00Z" cast=com.example.clock capture=com.example.monitor
+```
+
+Topic names by convention use past tense (e.g. `SPORE.node.spawned` vs `SPORE.node.spawn`). Nodes subscribe on connect, unsubscribe on disconnect. Unsubscribed nodes silently miss published messages — the hub does not buffer.
+
+---
+
+## Trust & Risk
+
+Every node has a **trust level**; every API entry and topic has a **risk level**.
+
+**Trust levels:** `system` · `developer` · `trusted` · `standard` · `untrusted`
+
+**Risk levels:** `benign` · `standard` · `personal` · `secret` · `protected`
+
+`benign` is open to all callers by default. `protected` is governed by a hardcoded hub whitelist and cannot be unlocked by policy. `personal` and `secret` require explicit user grants; the hub warns on first request. `developer` trust bypasses all policy — the hub warns when a `developer`-trust node connects.
+
+Trust is declared in the manifest and may be overridden by the user at install time, except `system` (hardcoded whitelist only).
+
+---
+
 ## Hub API (built-in subjects)
 
 | Subject | What it does |
@@ -152,6 +191,8 @@ Used for logging, debugging, monitoring. The hub never blocks on witnesses.
 | `SPORE.node.list` | List all known nodes |
 | `SPORE.node.install path=...` | Register a manifest |
 | `SPORE.node.uninstall node=...` | Remove a node |
+| `SPORE.topic.subscribe topic=...` | Subscribe to a topic |
+| `SPORE.topic.unsubscribe topic=...` | Unsubscribe from a topic |
 
 ---
 
@@ -161,3 +202,6 @@ Used for logging, debugging, monitoring. The hub never blocks on witnesses.
 - Manifests are read-only at runtime. Changes require a node restart.
 - Every call must include a `~handle`. The hub rejects calls without one.
 - All messages are newline-delimited plaintext. No binary framing.
+- Only the node that declares a topic may publish to it. Others receive `RouteNotAllowed`.
+- Broadcast subscriptions are not persistent — nodes must re-subscribe on each connect.
+- `publish` messages carry no handle and receive no response.

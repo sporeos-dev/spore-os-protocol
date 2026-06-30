@@ -4,9 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 # Spore OS Protocol Specification
-**Version:** v1d0  
-**Schema:** `SPORE/v1d0`  
-**Date:** 2026-03-04  
+**Version:** v0d2  
+**Schema:** `SPORE/v0d2`  
+**Date:** 2026-06-30  
 **Status:** Development
 
 ## 1. Overview
@@ -27,6 +27,7 @@ The hub is the local daemon. It:
 
 - Routes messages between nodes based on **manifest knowledge**, not message syntax
 - Maintains a **manifest registry** — nodes are known to the hub when installed, whether or not they are currently running
+- Fans out **broadcast messages** to subscribed nodes on declared topics
 
 The hub has its own manifest (`dev.sporeos.SPORE`) which defines its API. The hub manifest is part of this specification.
 
@@ -53,6 +54,15 @@ The manifest is **read-only at runtime**. Changes require a node restart.
 ### 2.4 The `SPORE.` Namespace
 
 `SPORE.` is protocol-reserved. No third-party node may register an `id` beginning with `SPORE.`. The hub rejects any handshake presenting a `SPORE.` ID unless it is a recognised hub-internal node.
+
+### 2.5 Trust and Risk
+
+Every node has a **trust level** declared in its manifest. Every API entry and topic has a **risk level**. Together, these form the access control model for capability access.
+
+- **Trust** is assigned to a node at install time. It describes how much authority that node is granted.
+- **Risk** is declared by the node author on each capability. It describes how sensitive the capability is.
+
+The hub enforces the relationship between them according to system policy and user preferences. See Section 11 for the full model.
 
 ---
 
@@ -405,6 +415,7 @@ Exactly one of `spore_incoming`, `spore_outgoing`, `spore_event`, or `spore_node
 | `~handle:subject` | Response binding — correlates a response to its originating call and subject |
 | `()` wrapper | Inline call substitution, resolved hub-side (see Section 6.4) |
 | `witness` | Reserved line prefix. Witness copies sent to witness nodes are prefixed with this token. It is not a subject and cannot be used as one. |
+| `publish` | Reserved line prefix. Broadcast messages sent by publishing nodes are prefixed with this token. It is not a subject and cannot be used as one. |
 
 **Reserved namespace:**
 
@@ -414,6 +425,7 @@ Exactly one of `spore_incoming`, `spore_outgoing`, `spore_event`, or `spore_node
 
 - `spore_` — all argument names beginning with `spore_` are reserved by the protocol. No node manifest may use a `spore_`-prefixed name as an input or output. The hub rejects manifests that violate this rule.
 - `witness` — reserved as a line-prefix token on the wire. No subject may be named `witness` or begin with `witness ` (with a trailing space). The hub rejects manifests declaring such a subject.
+- `publish` — reserved as a line-prefix token on the wire. No subject may be named `publish` or begin with `publish ` (with a trailing space). The hub rejects manifests declaring such a subject.
 
 ---
 
@@ -476,9 +488,11 @@ filesystem.read path=/work/report.pdf ~r1
 id: com.example.clock
 name: Clock
 version: 1.0.0
-schema: SPORE/v1d0
+schema: SPORE/v0d2
 description: Provides time-related functions.
+trust: standard
 api: []       # Direct call/response subjects
+topics: []    # Topics this node publishes
 errors: []    # Custom node-defined errors this node may emit
 witness: false # If true, this node receives all witness traffic from the hub
 ```
@@ -490,9 +504,10 @@ witness: false # If true, this node receives all witness traffic from the hub
 | `id` | string | ✅ | Reverse-domain unique identifier |
 | `name` | string | ✅ | Human-readable name |
 | `app` | string | ✅ | How to invoke the application (e.g., `./clock`, `./clock.exe`, `python -m myclock`, `node app.js`). Use `"n/a"` for system nodes. Relative paths are relative to the manifest directory. |
-| `schema` | string | ✅ | Manifest schema version (`SPORE/v1d0`) |
+| `schema` | string | ✅ | Manifest schema version (`SPORE/v0d2`) |
 | `version` | string | | Node API version (`MAJOR.MINOR.PATCH`). Informational. |
 | `description` | string | ✅ | Short description of the node's purpose |
+| `trust` | string | | Trust level of the node: `system`, `developer`, `trusted`, `standard`, `untrusted`. Assigned at install time. Default: `untrusted`. See Section 11. |
 | `autostart` | boolean | | If `true`, the hub spawns this node automatically when the hub starts in a headless manner (no UI or interactive context). Default: `false`. Only meaningful if `app` is set to a real executable path. |
 | `witness` | boolean | | If `true`, this node receives all witness traffic from the hub (see Section 9). Default: `false`. |
 
@@ -643,7 +658,38 @@ The `error` flag remains available for ad-hoc or unexpected errors that were not
 
 ---
 
-## 8.5 Manifest Location Convention
+## 8.5 Topics
+
+A node that publishes topics declares them in the top-level `topics` field. Topics are broadcast (push-only) — distinct from `api` entries, which are request/response.
+
+```yaml
+topics:
+  - name: clock.ticked
+    description: Published every minute.
+    risk: benign
+    usage:
+      - publish clock.ticked time="2026-06-30T12:00:00Z"
+    outputs:
+      - name: time
+        type: string
+        description: Current time in ISO 8601 format.
+```
+
+**Topic entry fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | ✅ | Subject name for the topic |
+| `description` | string | ✅ | What this topic represents |
+| `usage` | array | ✅ | Example `publish` calls demonstrating the message shape |
+| `risk` | string | ✅ | Risk level of the topic (see Section 11) |
+| `outputs` | array | | Fields present in the published message. Describes what is broadcast — there is no input from subscribers. |
+
+By convention, topic names use past tense to distinguish them from commands (e.g. `SPORE.node.spawned` vs `SPORE.node.spawn`). This is convention only — the hub does not enforce naming style.
+
+---
+
+## 8.6 Manifest Location Convention
 
 Manifests and their applications follow a co-location convention:
 
@@ -755,7 +801,130 @@ Always passthrough — the hub never blocks a call due to a witness being absent
 
 ---
 
-## 10. Hub Manifest
+## 10. Broadcast
+
+### 10.1 Architecture
+
+Broadcast is a **publish/subscribe channel**. A node that declares topics in its manifest may publish to those topics at any time. The hub fans out each published message to all currently subscribed nodes.
+
+- Only the node that declared a topic in its manifest may publish to it. Attempts by any other node to publish result in `RouteNotAllowed`.
+- Subscriptions are managed at runtime via `SPORE.topic.subscribe` and `SPORE.topic.unsubscribe`.
+- Nodes are responsible for subscribing on connect and unsubscribing on disconnect.
+- If no subscribers are connected when a message is published, the message is silently dropped.
+- Delivery is **fire-and-forget** — the hub does not wait for subscribers and does not retry.
+- The hub does not buffer undelivered messages.
+
+### 10.2 Wire Format
+
+A broadcast message uses the reserved `publish` line prefix. No `~handle` is included — broadcast is one-way with no response:
+
+```
+publish subject [key=value ...] [flags]
+```
+
+**Example (publisher sends):**
+```
+publish SPORE.node.spawned node=com.example.clock
+```
+
+The hub injects `cast=` (publisher ID) before fanning out. Each subscriber receives a delivery with their own `capture=`:
+
+```
+publish SPORE.node.spawned node=com.example.clock cast=dev.sporeos.SPORE capture=com.example.monitor
+```
+
+`cast=` identifies the publishing node. `capture=` identifies this specific subscriber — each delivery carries the individual subscriber's ID.
+
+### 10.3 Topic Ownership
+
+A topic is declared in the publishing node's manifest under the `topics` field. Only that node may publish to it. The hub resolves topic ownership against the manifest registry, exactly as it resolves API subject ownership.
+
+### 10.4 Subscriptions
+
+Subscriptions are managed via hub API calls and are **not persistent** across disconnect/reconnect. A node is responsible for re-subscribing each time it connects:
+
+```
+SPORE.topic.subscribe topic=SPORE.node.spawned ~h1
+← ~h1:SPORE.topic.subscribe ok capture=SPORE.hub
+
+SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h2
+← ~h2:SPORE.topic.unsubscribe ok capture=SPORE.hub
+```
+
+### 10.5 Witness Integration
+
+All broadcast traffic flows through the witness stream. Published messages appear as `spore_incoming` (the `publish` line from the publisher) and `spore_outgoing` (each fan-out delivery to a subscriber). Witness nodes see all published messages regardless of whether they have subscribed to a topic.
+
+### 10.6 Trust and Risk
+
+Topic subscriptions are subject to the same trust and risk policy as request/response calls. The hub enforces this at subscription time — `SPORE.topic.subscribe` returns `RouteNotAllowed` if the subscribing node's trust level does not satisfy the topic's risk policy.
+
+---
+
+## 11. Trust & Risk
+
+### 11.1 Overview
+
+Every node has a **trust level** declared in its manifest. Every API entry and topic has a **risk level**. Together, these define the security boundary for capability access.
+
+Trust is assigned at install time and reflects how much authority the node is granted. Risk is declared by the node author and reflects how sensitive the capability is. The hub enforces the relationship between them according to system policy and user preferences.
+
+### 11.2 Trust Levels
+
+| Level | Meaning |
+|---|---|
+| `system` | Hub-internal nodes only. Governed by a hardcoded hub whitelist — cannot be assigned to third-party nodes at install. |
+| `developer` | Full trust — bypasses all user preferences and policy. For local development only. The hub emits a warning whenever a `developer`-trust node connects. Do not use in production. |
+| `trusted` | High trust. Access governed by policy; typically broader than `standard`. |
+| `standard` | Regular trust. Expected for well-known, vetted nodes. |
+| `untrusted` | All permissions must be explicitly granted. No implicit access beyond `benign` APIs. Default for nodes without an explicit trust assignment. |
+
+Trust is set in the manifest by the node author. A user may override trust at install time — with the following constraints:
+
+- **`developer`** — the hub warns that this level bypasses all policy and should not be used for production nodes.
+- **`system`** — cannot be assigned via install; reserved for the hardcoded hub whitelist.
+
+### 11.3 Risk Levels
+
+| Level | Meaning |
+|---|---|
+| `benign` | No sensitive access. Open to all callers regardless of trust level. |
+| `standard` | Minor capability. Access governed by policy. |
+| `personal` | Access to personal data. Requires explicit user policy grant. Hub warns on first access request. |
+| `secret` | Access to credentials, keys, or other sensitive material. Requires explicit user policy grant. Hub warns on first access request. |
+| `protected` | System-critical capabilities. Access governed by a hardcoded hub whitelist. Cannot be unlocked by user preferences or policy. |
+
+### 11.4 Default Policy
+
+| Risk | Default |
+|---|---|
+| `benign` | **Open** — all callers may access, regardless of trust level |
+| `standard` | Policy-defined — default behaviour is determined by the caller's trust level |
+| `personal` | **Deny** by default. Requires explicit user grant. Hub warns on first grant request. |
+| `secret` | **Deny** by default. Requires explicit user grant. Hub warns on first grant request. |
+| `protected` | **Deny** to all except hub-whitelisted nodes. Cannot be overridden by user policy. |
+
+> **Note:** The full trust/risk policy matrix and user preference mechanism are defined in a subsequent version. For v0d2, the model is established and the manifest fields are active; runtime enforcement of the middle tiers (`standard`, `personal`, `secret`) is forward-declared.
+
+### 11.5 Developer Trust Warning
+
+When a node with `developer` trust connects, the hub emits a warning on the witness stream:
+
+```
+witness SPORE.hub.event level=warn what="Node com.example.mynode has developer trust. All policy is bypassed. Do not use in production." spore_event spore_time=...
+```
+
+### 11.6 Protected Resources
+
+`protected` risk capabilities and `system` trust assignments are governed by a whitelist hardcoded in the hub binary. This cannot be modified by config file or runtime call — the hub binary is the trust anchor for protected resources. Nodes not on the whitelist receive `RouteNotAllowed` regardless of their stated trust level.
+
+### 11.7 Inline Call Trust Preservation
+
+When the hub expands an inline call (see Section 6.4), the inner call is forwarded with `cast=<original_caller>`. The hub never substitutes its own identity (`cast=SPORE.hub`) for hub-generated inner calls. This ensures that inline call substitution cannot be used to escalate privileges to a higher trust level.
+
+---
+
+## 12. Hub Manifest
 
 The hub exposes subjects for introspection and lifecycle management. Its manifest follows the standard format.
 
@@ -765,7 +934,8 @@ The hub exposes subjects for introspection and lifecycle management. Its manifes
 id: dev.sporeos.SPORE
 name: Spore OS Hub
 app: spore
-schema: SPORE/v1d0
+schema: SPORE/v0d2
+trust: system
 description: Central router and manifest registry.
 
 api:
@@ -800,8 +970,69 @@ api:
         description: Reverse-domain ID of the node to uninstall.
     notes:
       - "Either node or path must be provided (at least one is required)."
+
+  - name: SPORE.topic.subscribe
+    description: Subscribe the calling node to a topic. Delivered messages will arrive prefixed with `publish` while the node is connected.
+    usage:
+      - SPORE.topic.subscribe topic=SPORE.node.spawned ~h1
+    inputs:
+      - name: topic
+        type: string
+        required: true
+        description: The topic subject to subscribe to. Must be declared in an installed node's manifest.
+
+  - name: SPORE.topic.unsubscribe
+    description: Unsubscribe the calling node from a topic.
+    usage:
+      - SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h1
+    inputs:
+      - name: topic
+        type: string
+        required: true
+        description: The topic subject to unsubscribe from.
+
+topics:
+  - name: SPORE.node.installed
+    description: Published when a node's manifest is registered with the hub.
+    risk: standard
+    usage:
+      - publish SPORE.node.installed node=com.example.clock
+    outputs:
+      - name: node
+        type: string
+        description: The node ID of the installed node.
+
+  - name: SPORE.node.uninstalled
+    description: Published when a node is unregistered from the hub.
+    risk: standard
+    usage:
+      - publish SPORE.node.uninstalled node=com.example.clock
+    outputs:
+      - name: node
+        type: string
+        description: The node ID of the uninstalled node.
+
+  - name: SPORE.node.spawned
+    description: Published when the hub spawns a node process.
+    risk: standard
+    usage:
+      - publish SPORE.node.spawned node=com.example.clock
+    outputs:
+      - name: node
+        type: string
+        description: The node ID of the spawned node.
+
+  - name: SPORE.node.killed
+    description: Published when the hub kills a node process.
+    risk: standard
+    usage:
+      - publish SPORE.node.killed node=com.example.clock
+    outputs:
+      - name: node
+        type: string
+        description: The node ID of the killed node.
 ```
 
 ---
 
-*Spore OS Protocol v1d0 — March 2026*
+*Spore OS Protocol v0d2 — June 2026*
