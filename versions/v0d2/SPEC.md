@@ -269,7 +269,7 @@ Every error response also carries exactly one **error origin flag** indicating w
 
 ```
 # Hub-produced routing error:
-~h1:time.get_time error code=RouteNotFound what="No node connected for this subject" spore_error capture=SPORE.hub
+~h1:time.get_time error code=RouteNotConnected what="No node connected for this subject" spore_error capture=SPORE.hub
 
 # Hub-produced argument validation error:
 ~h1:time.get_time error code=RequiredArgumentMissing what="Missing required argument: timezone" cast_error capture=SPORE.hub
@@ -313,7 +313,8 @@ These are protocol-defined codes used with the `error` flag. Nodes should prefer
 
 | Code | Meaning |
 |---|---|
-| `RouteNotFound` | No node is available for this subject — either no installed node owns it, or the owning node is not currently connected |
+| `RouteNotFound` | No installed node declares this subject — no manifest in the registry owns it |
+| `RouteNotConnected` | The subject is declared in an installed node's manifest, but that node is not currently connected |
 | `RouteNotAvailable` | A matching node exists but cannot handle the call right now |
 | `RouteNotAllowed` | The caller is not permitted to call this subject |
 | `RouteNotImplemented` | The subject is declared in the manifest but not yet implemented |
@@ -470,13 +471,7 @@ logger.append entry="started" ~l2
 
 ### 7.3 Composition
 
-The output of one call feeds the next. The orchestrating node composes them; the individual nodes are unaware of each other.
-
-```
-filesystem.read path=/work/report.pdf ~r1
-~r1:filesystem.read |> summariser.summarise text=<content> ~s1
-~s1:summariser.summarise |> logger.append entry=<summary>
-```
+The output of one call feeds the next. The orchestrating node sequences calls itself; individual nodes are unaware of each other. The hub-level mechanism for this is inline call substitution (see Section 6.4); beyond that, composition is a node implementation concern.
 
 ---
 
@@ -788,12 +783,7 @@ The hub emits no structured log of its own during normal operation. The sole exc
 
 ### 9.6 Core Witness Nodes
 
-These witness nodes ship with Spore:
-
-| Node | Purpose | Autostart |
-|---|---|---|
-| `SPORE.witness.console` | Active debugging, REPL companion. Outputs to stdout with filtering flags. | No |
-| `SPORE.witness.log` | Persistent record. Writes rolling file, unfiltered. | Yes |
+The hub ships two built-in witness nodes. See [HUB.md](HUB.md) for details.
 
 ### 9.7 Failure Mode
 
@@ -904,7 +894,7 @@ Trust is set in the manifest by the node author. A user may override trust at in
 | `secret` | **Deny** by default. Requires explicit user grant. Hub warns on first grant request. |
 | `protected` | **Deny** to all except hub-whitelisted nodes. Cannot be overridden by user policy. |
 
-> **Note:** The full trust/risk policy matrix and user preference mechanism are defined in a subsequent version. For v0d2, the model is established and the manifest fields are active; runtime enforcement of the middle tiers (`standard`, `personal`, `secret`) is forward-declared.
+> **Known gap:** Runtime enforcement of the middle tiers (`standard`, `personal`, `secret`) and the user preference mechanism are not yet fully defined. The model and manifest fields are established in v0d2; the enforcement matrix and permission API are open issues. See [OPEN.md](OPEN.md).
 
 ### 11.5 Developer Trust Warning
 
@@ -924,114 +914,9 @@ When the hub expands an inline call (see Section 6.4), the inner call is forward
 
 ---
 
-## 12. Hub Manifest
+## 12. Hub Contract
 
-The hub exposes subjects for introspection and lifecycle management. Its manifest follows the standard format.
-
-> **Note:** This section lists the minimum required API for a conforming hub. Implementations may expose additional `SPORE.*` commands beyond those listed here. The listed entries represent the canonical, cross-implementation contract — not an exhaustive catalogue.
-
-```yaml
-id: dev.sporeos.SPORE
-name: Spore OS Hub
-app: spore
-schema: SPORE/v0d2
-trust: system
-description: Central router and manifest registry.
-
-api:
-  - name: SPORE.node.list
-    description: List all known nodes and their state (installed or connected).
-    usage:
-      - SPORE.node.list
-    outputs:
-      - name: nodes
-        type: array
-        description: Array of installed node IDs.
-
-  - name: SPORE.node.install
-    description: Register a node's manifest with the hub. Makes the node discoverable and callable.
-    usage:
-      - SPORE.node.install path=/path/to/manifest.yaml
-      - SPORE.node.install path=(dialog.file_picker)
-    inputs:
-      - name: path
-        type: string
-        required: true
-        description: Path to the manifest YAML file. Supports inline call substitution (e.g. path=(dialog.file_picker)).
-
-  - name: SPORE.node.uninstall
-    description: Unregister a node from the hub. Removes it from the manifest registry.
-    usage:
-      - SPORE.node.uninstall node=com.example.old_node
-    inputs:
-      - name: node
-        type: string
-        required: true
-        description: Reverse-domain ID of the node to uninstall.
-    notes:
-      - "Either node or path must be provided (at least one is required)."
-
-  - name: SPORE.topic.subscribe
-    description: Subscribe the calling node to a topic. Delivered messages will arrive prefixed with `publish` while the node is connected.
-    usage:
-      - SPORE.topic.subscribe topic=SPORE.node.spawned ~h1
-    inputs:
-      - name: topic
-        type: string
-        required: true
-        description: The topic subject to subscribe to. Must be declared in an installed node's manifest.
-
-  - name: SPORE.topic.unsubscribe
-    description: Unsubscribe the calling node from a topic.
-    usage:
-      - SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h1
-    inputs:
-      - name: topic
-        type: string
-        required: true
-        description: The topic subject to unsubscribe from.
-
-topics:
-  - name: SPORE.node.installed
-    description: Published when a node's manifest is registered with the hub.
-    risk: standard
-    usage:
-      - publish SPORE.node.installed node=com.example.clock
-    outputs:
-      - name: node
-        type: string
-        description: The node ID of the installed node.
-
-  - name: SPORE.node.uninstalled
-    description: Published when a node is unregistered from the hub.
-    risk: standard
-    usage:
-      - publish SPORE.node.uninstalled node=com.example.clock
-    outputs:
-      - name: node
-        type: string
-        description: The node ID of the uninstalled node.
-
-  - name: SPORE.node.spawned
-    description: Published when the hub spawns a node process.
-    risk: standard
-    usage:
-      - publish SPORE.node.spawned node=com.example.clock
-    outputs:
-      - name: node
-        type: string
-        description: The node ID of the spawned node.
-
-  - name: SPORE.node.killed
-    description: Published when the hub kills a node process.
-    risk: standard
-    usage:
-      - publish SPORE.node.killed node=com.example.clock
-    outputs:
-      - name: node
-        type: string
-        description: The node ID of the killed node.
-```
+The normative hub contract — the `SPORE.*` subjects and topics a conforming hub must expose — is defined in [HUB.md](HUB.md).
 
 ---
 

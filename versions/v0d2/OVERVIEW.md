@@ -72,7 +72,7 @@ com.example.clock
 ```
 Hub replies `OK`. Node is now live and callable.
 
-Installed but not connected: the hub knows the node, but the process isn't running — calls to its subjects return `RouteNotFound`.  
+Installed but not connected: the hub knows the node, but the process isn't running — calls to its subjects return `RouteNotConnected`.  
 Connected: the node is running and has completed the handshake.
 
 ---
@@ -107,7 +107,7 @@ subject [key=value ...] ~handle
 ```
 ~handle:subject error code=SomeCode what="description" node_error capture=node_id
 ```
-Every error carries exactly one origin flag: `spore_error` (hub), `node_error` (receiver), `cast_error` (caller's fault), or `capture_error` (bad reply from responder).
+Every error carries exactly one origin flag indicating where it originated.
 
 Every call gets exactly one response. `ok`, `error`, `custom_error`, or `cancelled` — always exactly one.
 
@@ -127,19 +127,7 @@ clock.get_time timezone=UTC ~h1
 
 ## Inline calls
 
-The hub resolves inner calls before forwarding the outer one. Two forms:
-
-**Key binding** — result of the inner call is bound to a named argument:
-```
-SPORE.node.install path=(dialog.file_picker)
-```
-
-**Spread** — all fields from the inner call's response are spread into the outer call:
-```
-filesystem.list (dialog.dir.open) recursive
-```
-
-If the inner call returns `cancelled` or `error`, the outer call is never forwarded — the result is returned to the original caller immediately.
+The hub resolves inner calls before forwarding the outer one: `path=(dialog.file_picker)` expands hub-side before the outer call is forwarded. See [SPEC.md §6.4](SPEC.md).
 
 ---
 
@@ -156,17 +144,7 @@ Used for logging, debugging, monitoring. The hub never blocks on witnesses.
 
 ## Broadcast
 
-Declare topics in the manifest under `topics`. Publish to them at any time — only the declaring node may publish. Subscribers receive delivered messages via `SPORE.topic.subscribe`.
-
-```
-# Publisher sends:
-publish clock.ticked time="2026-06-30T12:00:00Z"
-
-# Hub delivers to each subscriber:
-publish clock.ticked time="2026-06-30T12:00:00Z" cast=com.example.clock capture=com.example.monitor
-```
-
-Topic names by convention use past tense (e.g. `SPORE.node.spawned` vs `SPORE.node.spawn`). Nodes subscribe on connect, unsubscribe on disconnect. Unsubscribed nodes silently miss published messages — the hub does not buffer.
+Declare topics in the manifest under `topics`. Only the declaring node may publish to a topic; subscribers receive messages via `SPORE.topic.subscribe`.
 
 ---
 
@@ -185,6 +163,8 @@ Trust is declared in the manifest and may be overridden by the user at install t
 ---
 
 ## Hub API (built-in subjects)
+
+The hub exposes `SPORE.*` subjects for node lifecycle management, topic subscriptions, and introspection. The full normative hub contract is defined in [HUB.md](HUB.md).
 
 | Subject | What it does |
 |---|---|
