@@ -27,29 +27,7 @@ A local IPC protocol over Unix domain sockets. Applications expose capabilities;
 
 ## Manifest shape
 
-```yaml
-id: com.example.clock
-name: Clock
-app: ./clock
-schema: SPORE/v0d2
-trust: standard
-description: Provides time functions.
-api:
-  - name: get_time
-    description: Returns the current time.
-    usage:
-      - clock.get_time
-      - clock.get_time timezone=America/New_York
-    inputs:
-      - name: timezone
-        type: string
-        required: false
-        description: IANA timezone. Defaults to UTC.
-    outputs:
-      - name: time
-        type: string
-        description: Current time in ISO 8601 format.
-```
+A manifest is a YAML file declaring the node's identity, API subjects (with inputs and outputs), topics, and custom errors. See [MANIFESTS.md](MANIFESTS.md) for the full schema reference.
 
 ---
 
