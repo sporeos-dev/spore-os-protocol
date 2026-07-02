@@ -51,25 +51,11 @@ The trust/risk model is established in v0d2 and manifest fields are active. Howe
 
 **Affected:** [HUB.md](HUB.md)
 
-`spored` exposes subjects beyond those listed in [HUB.md](HUB.md). The following are implemented but not yet adjudicated as part of the normative hub contract:
+One subject remains implemented in `spored` but not yet adjudicated as part of the normative hub contract:
 
 | Subject | Notes |
 |---|---|
-| `SPORE.node.spawn` | Start a node process |
-| `SPORE.node.kill` | Stop a node process |
-| `SPORE.node.help` | Describe a node |
-| `SPORE.command.list` | List all known subjects |
-| `SPORE.command.help` | Describe a subject |
-| `SPORE.error.list` | List all known error codes |
-| `SPORE.error.help` | Describe an error code |
-| `SPORE.topic.list` | List all known topics |
-| `SPORE.topic.help` | Describe a topic |
-| `SPORE.permission.*` | See item 2 |
-| `SPORE.security.keyring.*` | Hub keyring management — likely hub-internal only |
-| `SPORE.security.signature.*` | Signature verification — likely hub-internal only |
-| `SPORE.developer.manifest.load` | Development-only manifest hot-reload |
-
-The `SPORE.security.*` and `SPORE.developer.*` subjects are likely hub-internal administration API and may not belong in the normative contract. This needs to be decided explicitly.
+| `SPORE.developer.manifest.load` | Development-only manifest hot-reload — scope and safety boundary undefined |
 
 ---
 

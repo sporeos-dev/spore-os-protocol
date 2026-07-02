@@ -142,15 +142,13 @@ Trust is declared in the manifest and may be overridden by the user at install t
 
 ## Hub API (built-in subjects)
 
-The hub exposes `SPORE.*` subjects for node lifecycle management, topic subscriptions, and introspection. The full normative hub contract is defined in [HUB.md](HUB.md).
+The hub exposes `SPORE.*` subjects grouped by concern. The full normative contract with examples is in [HUB.md](HUB.md).
 
-| Subject | What it does |
-|---|---|
-| `SPORE.node.list` | List all known nodes |
-| `SPORE.node.install path=...` | Register a manifest |
-| `SPORE.node.uninstall node=...` | Remove a node |
-| `SPORE.topic.subscribe topic=...` | Subscribe to a topic |
-| `SPORE.topic.unsubscribe topic=...` | Unsubscribe from a topic |
+- **[Node Management](HUB.md#node-management)** — install, uninstall, spawn, kill, list, and describe nodes
+- **[Introspection](HUB.md#introspection)** — list and describe subjects and error codes across all nodes
+- **[Topics](HUB.md#topics)** — subscribe, unsubscribe, and discover topics; hub lifecycle events
+- **[Permissions](HUB.md#permissions)** — request, grant, and revoke capability access
+- **[Security](HUB.md#security)** — keyring management and signature signing/verification
 
 ---
 
