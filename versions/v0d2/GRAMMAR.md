@@ -85,6 +85,29 @@ Rules:
 | Inline call (key binding) | `key=(subject [args...])` | `path=(dialog.file_picker)` |
 | Inline call (spread) | `(subject [args...])` | `(dialog.dir.open)` |
 
+**Double-quoted string escapes:**
+
+Double-quoted strings support backslash escapes. The following sequences are recognised:
+
+| Sequence | Meaning |
+|---|---|
+| `\\` | Literal backslash (`\`) |
+| `\"` | Literal double-quote (`"`) |
+| `\n` | Line feed (newline, U+000A) |
+| `\r` | Carriage return (U+000D) |
+| `\t` | Horizontal tab (U+0009) |
+
+Any `\` followed by a character not in the table above is preserved as-is (the backslash and the character are both kept in the value).
+
+Single-quoted strings have **no escape processing** — every character including `\` is literal. Because `'...'` is opaque and `"..."` supports `\"`, both quote styles can now express any string value:
+
+```
+msg="say \"hi\""          # double-quote inside a double-quoted string
+msg='say "hi"'            # double-quote inside a single-quoted string (no escaping needed)
+content="line1\nline2"    # newline embedded in a value
+path="C:\\Users\\test"    # backslash (Windows path)
+```
+
 **Flags vs. Booleans:**
 
 - **Flag:** A bare token that changes behavior when present. Declared as `type: flag` in the manifest. On the wire, the presence of the token means true; absence means false. Never has a value.
