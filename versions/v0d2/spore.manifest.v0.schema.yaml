@@ -65,10 +65,23 @@ properties:
     type: string
     description: Short description of the node's purpose.
 
-  autostart:
-    type: boolean
-    description: If true, the hub spawns this node automatically when the hub starts. Default is false. Only meaningful if app is set to a real executable path.
-    default: false
+  start:
+    type: string
+    description: Set the starting algorithm.
+    default: manual
+    enum:
+      - auto
+      - lazy
+      - manual
+
+  space:
+    type: string
+    description: Set the userspace.
+    default: any
+    enum:
+      - any
+      - spore
+      - hyphae
 
   witness:
     type: boolean
@@ -89,12 +102,24 @@ properties:
       $ref: "#/definitions/topic_entry"
     default: []
 
+  permissions:
+    type: array
+    description: All permissions this node requires to operate. Each entry is a capability.
+    items: 
+      type: string
+    default: []
+
   errors:
     type: array
     description: Custom node-defined errors this node may emit using the custom_error flag.
     items:
       $ref: "#/definitions/error_entry"
     default: []
+
+  notes:
+    type: array
+    items:
+      type: string
 
 # ── Definitions ────────────────────────────────────────────────────────────────
 
@@ -118,6 +143,10 @@ definitions:
         items:
           type: string
         description: "Potential causes or scenarios that trigger this error."
+      notes:
+        type: array
+        items:
+          type: string
 
   input:
     type: object
@@ -144,6 +173,10 @@ definitions:
         description: "Whether this argument must be provided. Should be false for type: flag."
       description:
         type: string
+      notes:
+        type: array
+        items:
+          type: string
 
   output:
     type: object
@@ -161,6 +194,10 @@ definitions:
         description: "Type hint (string, integer, boolean, array, object, etc.) or a specific response type (e.g., dialog.err.user_cancelled)."
       description:
         type: string
+      notes:
+        type: array
+        items:
+          type: string
 
   risk:
     type: string
@@ -209,7 +246,6 @@ definitions:
         type: array
         items:
           type: string
-        description: Optional clarifying notes about this API entry. Useful for documenting constraints, mutual exclusivity, or other guidance that complements the structured fields.
 
   topic_entry:
     type: object
@@ -238,3 +274,7 @@ definitions:
         items:
           $ref: "#/definitions/output"
         description: Possible data
+      notes:
+        type: array
+        items:
+          type: string
