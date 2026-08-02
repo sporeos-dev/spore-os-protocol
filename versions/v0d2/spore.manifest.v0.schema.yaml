@@ -104,9 +104,9 @@ properties:
 
   permissions:
     type: array
-    description: All permissions this node requires to operate. Each entry is a capability.
+    description: All permissions requests for operation.
     items: 
-      type: string
+      $ref: "#/definitions/capability_entry"
     default: []
 
   errors:
@@ -278,3 +278,19 @@ definitions:
         type: array
         items:
           type: string
+
+  capability_entry:
+    type: object
+    required:
+      - name
+      - reasons
+    additionalProperties: false
+    properties:
+      name:
+        type: string
+        description: "Capability name. Must be a valid capability."
+      reasons:
+        type: array
+        items:
+          type: string
+        description: "Why this node requires this capability. Each entry is a use-case."
