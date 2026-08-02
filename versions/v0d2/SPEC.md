@@ -176,7 +176,7 @@ filesystem.write path=/tmp/out.txt content="hello" ~w1
 
 # Error on a command:
 logger.append entry="started" ~l2
-← ~l2:logger.append error code=logger.err.disk_full what="No space remaining" capture=com.example.logger
+← ~l2:logger.append error code=Generic.Node what="No space remaining" capture=com.example.logger
 ```
 
 ### 7.3 Composition

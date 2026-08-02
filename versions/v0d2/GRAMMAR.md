@@ -159,26 +159,26 @@ Inline calls may nest — an inner call may itself contain an inline call. Reada
 
 ## 5. Errors
 
-Error responses follow the same grammar as success responses. The presence of `error` marks the response as an error; `code=` carries a standard or custom identifier; `what=` carries a human-readable description.
+Error responses follow the same grammar as success responses. The presence of `error` marks the response as an error; `code=` carries the error identifier in `Code.Module` dot-notation; `what=` carries a human-readable description.
 
 Every error response also carries exactly one **error origin flag** indicating where the error originated (see Section 6).
 
 ```
-# Hub-produced routing error:
-~h1:time.get_time error code=RouteNotConnected what="No node connected for this subject" spore_error capture=SPORE.hub
+# Hub routing error:
+~h1:time.get_time error code=Missing.Node what="no node connected for this subject" spore_error capture=SPORE.hub
 
-# Hub-produced argument validation error:
-~h1:time.get_time error code=RequiredArgumentMissing what="Missing required argument: timezone" cast_error capture=SPORE.hub
+# Hub argument error:
+~h1:time.get_time error code=Missing.Message what="handle missing: every call must include a ~handle" cast_error capture=SPORE.hub
 
 # Node-produced error:
-~h1:time.get_time error code=Runtime what="Internal clock failure" node_error capture=com.example.clock
+~h1:time.get_time error code=Generic.Node what="internal clock failure" node_error capture=com.example.clock
 ```
 
 The caller checks for `ok` or `error` on every response — exactly one will be present. When `error` is present, `code=` and `what=` will always be set.
 
-**Standard error codes:**
+**Error code format: `Code.Module`**
 
-Errors carry both a `code=` and a `module=` field. `code` gives the nature of the failure; `module` gives the system component where it occurred. Together they express what was spec-defined error codes like `RouteNotFound` — e.g. `code=Missing module=Route`.
+`code=` combines the error kind and the originating component as `Code.Module`, e.g. `Missing.Node`, `NotPermitted.Permission`, `Malformed.Message`. The two parts are independently meaningful — `Code` describes what went wrong, `Module` describes where.
 
 *Codes:*
 
@@ -233,9 +233,8 @@ The following argument names are reserved by the protocol. They may not be used 
 | Keyword | Role | Meaning |
 |---|---|---|
 | `ok` | flag | Hub-injected. Marks this response as a success. |
-| `error` | flag | Written by the responding node or hub. Marks this response as an error. `code=`, `module=`, and `what=` will be set. |
-| `code` | string | Error code (see §5). |
-| `module` | string | Hub component where the error originated (see §5). |
+| `error` | flag | Written by the responding node or hub. Marks this response as an error. `code=` and `what=` will be set. |
+| `code` | string | Error identifier in `Code.Module` dot-notation (see §5). e.g. `Missing.Node`, `NotPermitted.Permission`. |
 | `what` | string | Human-readable error description. Always present with `error`. |
 
 **Error origin flags** — exactly one is present on every error response. Indicates where the error originated. Useful for debugging and tracing.

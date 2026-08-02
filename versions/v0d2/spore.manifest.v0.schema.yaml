@@ -65,7 +65,7 @@ properties:
     type: string
     description: Short description of the node's purpose.
 
-  start:
+  launch:
     type: string
     description: Set the starting algorithm.
     default: manual
@@ -74,9 +74,9 @@ properties:
       - lazy
       - manual
 
-  space:
+  namespace:
     type: string
-    description: Set the userspace.
+    description: Set the namespace.
     default: any
     enum:
       - any
