@@ -60,7 +60,7 @@ The manifest is **read-only at runtime**. Changes require a node restart.
 Every node has a **trust level** declared in its manifest. Every API entry and topic has a **risk level**. Together, these form the access control model for capability access.
 
 - **Trust** is assigned to a node at install time. It describes how much authority that node is granted.
-- **Risk** is declared by the node author on each capability. It describes how sensitive the capability is.
+- **Risk** is declared by the node author on each capability. It describes how sensitive that capability is.
 
 The hub enforces the relationship between them according to system policy and user preferences. See Section 11 for the full model.
 
@@ -297,13 +297,13 @@ publish subject [key=value ...] [flags]
 publish SPORE.node.spawned node=com.example.clock
 ```
 
-The hub injects `cast=` (publisher ID) before fanning out. Each subscriber receives a delivery with their own `capture=`:
+The hub injects `cast=` (publisher ID) before fanning out to all subscribers:
 
 ```
-publish SPORE.node.spawned node=com.example.clock cast=dev.sporeos.SPORE capture=com.example.monitor
+publish SPORE.node.spawned node=com.example.clock cast=dev.sporeos.SPORE
 ```
 
-`cast=` identifies the publishing node. `capture=` identifies this specific subscriber — each delivery carries the individual subscriber's ID.
+`cast=` identifies the publishing node.
 
 ### 10.3 Topic Ownership
 
@@ -327,7 +327,7 @@ All broadcast traffic flows through the witness stream. Published messages appea
 
 ### 10.6 Trust and Risk
 
-Topic subscriptions are subject to the same trust and risk policy as request/response calls. The hub enforces this at subscription time — `SPORE.topic.subscribe` returns `RouteNotAllowed` if the subscribing node's trust level does not satisfy the topic's risk policy.
+Topic subscriptions are subject to the same trust and risk policy as request/response calls. The hub enforces this at subscription time — `SPORE.topic.subscribe` returns `NotPermitted` if the subscribing node's trust level does not satisfy the topic's risk policy.
 
 ---
 
@@ -376,19 +376,11 @@ Trust is set in the manifest by the node author. A user may override trust at in
 
 > **Known gap:** Runtime enforcement of the middle tiers (`standard`, `personal`, `secret`) and the user preference mechanism are not yet fully defined. The model and manifest fields are established in v0d2; the enforcement matrix and permission API are open issues. See [OPEN.md](OPEN.md).
 
-### 11.5 Developer Trust Warning
+### 11.5 Protected Resources
 
-When a node with `developer` trust connects, the hub emits a warning on the witness stream:
+`protected` risk capabilities and `system` trust assignments are governed by a whitelist hardcoded in the hub binary. This cannot be modified by config file or runtime call — the hub binary is the trust anchor for protected resources. Nodes not on the whitelist receive `NotPermitted` regardless of their stated trust level.
 
-```
-witness SPORE.hub.event level=warn what="Node com.example.mynode has developer trust. All policy is bypassed. Do not use in production." spore_event spore_time=...
-```
-
-### 11.6 Protected Resources
-
-`protected` risk capabilities and `system` trust assignments are governed by a whitelist hardcoded in the hub binary. This cannot be modified by config file or runtime call — the hub binary is the trust anchor for protected resources. Nodes not on the whitelist receive `RouteNotAllowed` regardless of their stated trust level.
-
-### 11.7 Inline Call Trust Preservation
+### 11.6 Inline Call Trust Preservation
 
 When the hub expands an inline call (see [GRAMMAR.md §4](GRAMMAR.md)), the inner call is forwarded with `cast=<original_caller>`. The hub never substitutes its own identity (`cast=SPORE.hub`) for hub-generated inner calls. This ensures that inline call substitution cannot be used to escalate privileges to a higher trust level.
 

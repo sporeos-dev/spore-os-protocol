@@ -23,6 +23,8 @@ version: 1.0.0
 schema: SPORE/v0d2
 description: Provides time-related functions.
 trust: standard
+launch: manual-launch
+namespace: any
 api: []       # Direct call/response subjects
 topics: []    # Topics this node publishes
 errors: []    # Custom node-defined errors this node may emit
@@ -42,7 +44,8 @@ witness: false # If true, this node receives all witness traffic from the hub
 | `version` | string | | Node API version (`MAJOR.MINOR.PATCH`). Informational. |
 | `description` | string | ✅ | Short description of the node's purpose |
 | `trust` | string | | Trust level of the node: `system`, `developer`, `trusted`, `standard`, `untrusted`. Assigned at install time. Default: `untrusted`. See [SPEC.md §11](SPEC.md). |
-| `autostart` | boolean | | If `true`, the hub spawns this node automatically when the hub starts in a headless manner (no UI or interactive context). Default: `false`. Only meaningful if `app` is set to a real executable path. |
+| `launch` | string | | When the hub spawns this node: `auto-launch` (on hub start), `lazy-launch` (on first call), `manual-launch` (never by hub). Default: `manual-launch`. Only meaningful if `app` is set to a real executable path. |
+| `namespace` | string | | Execution namespace for spawning: `spore` (hub process space), `hyphae` (user space via hyphae layer), `any` (no constraint). Default: `any`. |
 | `witness` | boolean | | If `true`, this node receives all witness traffic from the hub (see [SPEC.md §9](SPEC.md)). Default: `false`. |
 
 ---

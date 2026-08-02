@@ -46,7 +46,7 @@ SPORE.node.uninstall node=com.example.clock ~h3
 ← ~h3:SPORE.node.uninstall ok capture=SPORE.hub
 ```
 
-`SPORE.node.uninstall` accepts either `node=` (reverse-domain ID) or `path=` (manifest path).
+`SPORE.node.uninstall` accepts `node=` (reverse-domain ID).
 
 **Spawning and killing** starts or stops a node process. The hub uses the `app` field from the installed manifest to launch the node. Spawned nodes are always headless.
 
@@ -58,14 +58,11 @@ SPORE.node.kill node=com.example.clock ~h2
 ← ~h2:SPORE.node.kill ok capture=SPORE.hub
 ```
 
-**Listing and describing** — `SPORE.node.list` returns all installed node IDs; pass the `connected` flag to filter to currently running nodes only. `SPORE.node.help` returns the manifest details for a specific node.
+**Listing and describing** — `SPORE.node.list` returns all installed node IDs. `SPORE.node.help` returns the manifest details for a specific node.
 
 ```
 SPORE.node.list ~h1
 ← ~h1:SPORE.node.list nodes=["com.example.clock", "com.example.filesystem"] ok capture=SPORE.hub
-
-SPORE.node.list connected ~h2
-← ~h2:SPORE.node.list nodes=["com.example.clock"] ok capture=SPORE.hub
 
 SPORE.node.help node=com.example.clock ~h3
 ← ~h3:SPORE.node.help nodeinfo={...} ok capture=SPORE.hub
@@ -99,7 +96,7 @@ SPORE.error.list ~h1
 SPORE.error.list node=com.example.clock ~h2
 ← ~h2:SPORE.error.list errors=["clock.err.invalid_timezone", ...] ok capture=SPORE.hub
 
-SPORE.error.help errorcode=RouteNotFound ~h3
+SPORE.error.help code=RouteNotFound ~h3
 ← ~h3:SPORE.error.help errorinfo={...} ok capture=SPORE.hub
 ```
 
@@ -121,20 +118,7 @@ SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h2
 
 **Discovery** — `SPORE.topic.list` and `SPORE.topic.help` work the same way as their command equivalents: list all topics (or scope to a node), and describe a specific topic.
 
-**Hub lifecycle events** — the hub publishes these topics itself. Nodes interested in the node lifecycle subscribe to them.
-
-| Topic | Published when |
-|---|---|
-| `SPORE.node.installed` | A manifest is registered with the hub |
-| `SPORE.node.uninstalled` | A node is unregistered |
-| `SPORE.node.spawned` | The hub starts a node process |
-| `SPORE.node.killed` | The hub stops a node process |
-
-Each carries a single `node` field with the affected node ID:
-
-```
-publish SPORE.node.spawned node=com.example.clock cast=dev.sporeos.SPORE capture=com.example.monitor
-```
+**Hub lifecycle events** — the hub publishes no lifecycle topics of its own. Inspect node state directly via `SPORE.node.state`.
 
 ---
 
@@ -142,22 +126,22 @@ publish SPORE.node.spawned node=com.example.clock cast=dev.sporeos.SPORE capture
 
 > **Open issue:** The enforcement model — the policy matrix, how requests are surfaced to users, and how grants are stored — is not yet fully specified. See [OPEN.md](OPEN.md).
 
-Permissions govern which nodes may call which subjects or subscribe to which topics. The core flow is: a node requests access, the hub presents it to the user, and the result is granted or denied.
+Permissions govern which nodes may call which capabilities (subjects or topics). The core flow is: a node requests access, the hub presents it to the user, and the result is granted or denied.
 
 ```
 # Node requests access at runtime:
-SPORE.permission.request command=filesystem.read ~h1
+SPORE.permission.request node=com.example.agent capability=filesystem.read ~h1
 ← ~h1:SPORE.permission.request granted ok capture=SPORE.hub
 
 # Granting and revoking can also be done directly:
-SPORE.permission.grant node=com.example.agent command=filesystem.read ~h2
+SPORE.permission.grant node=com.example.agent capability=filesystem.read ~h2
 ← ~h2:SPORE.permission.grant ok capture=SPORE.hub
 
-SPORE.permission.revoke node=com.example.agent command=filesystem.read ~h3
+SPORE.permission.revoke node=com.example.agent capability=filesystem.read ~h3
 ← ~h3:SPORE.permission.revoke ok capture=SPORE.hub
 ```
 
-Both `command=` and `topic=` are accepted by grant, revoke, and request. `SPORE.permission.list` returns current grants, optionally filtered by node, command, or topic.
+Both API subjects and topics are considered capabilities. `SPORE.permission.list` returns current grants, optionally filtered by node or capability.
 
 ---
 

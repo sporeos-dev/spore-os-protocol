@@ -34,13 +34,7 @@ Every call receives exactly one response. The `~handle:subject` prefix binds the
 ```
 An error response uses the same shape as a success response. The presence of the `error` flag is the sole distinguishing marker; `ok` is never present on an error. Either the responding node or the hub itself may produce an error response.
 
-**Cancelled response:**
-```
-~handle:subject cancelled capture=node_id
-```
-A cancelled response indicates a graceful non-result — the call completed without error, but produced no output because the user or system chose not to proceed (e.g. a user dismissed a dialog). The responding node writes `cancelled`; the hub injects `capture=` as it does for all responses. No data fields are present on a cancelled response.
-
-Exactly one of `ok`, `error`, `custom_error`, or `cancelled` is present on every response.
+Exactly one of `ok` or `error` is present on every response.
 
 **Full exchange example:**
 ```
@@ -134,7 +128,7 @@ The hub generates an internal handle for each inner call using the `~~` prefix f
 
 The hub executes the inner call and binds one field from its response to the named key in the outer call. Field resolution follows this priority order:
 
-1. If the inner response has exactly one data field (excluding protocol fields `ok`, `cancelled`, `error`, `custom_error`, `capture`, `cast`, `code`, `what`), that field is used regardless of its name.
+1. If the inner response has exactly one data field (excluding protocol fields `ok`, `error`, `capture`, `cast`, `code`, `what`), that field is used regardless of its name.
 2. If the inner response has multiple data fields, the hub looks for a field whose name matches the outer key. If found, it is used.
 3. If neither condition is satisfied, the hub returns an error to the original caller — the field cannot be resolved.
 
@@ -146,20 +140,16 @@ filesystem.read path=(shortpath project=notes)
 
 **Form 2 — Spread: `(subject [args...])`**
 
-The hub executes the inner call and spreads all data fields from its response directly into the outer call as if they had been written there by the caller. Protocol fields (`ok`, `cancelled`, `error`, `custom_error`, `capture`, `cast`, `code`, `what`) are stripped and never spread. Only one spread form may appear per outer call.
+The hub executes the inner call and spreads all data fields from its response directly into the outer call as if they had been written there by the caller. Protocol fields (`ok`, `error`, `capture`, `cast`, `code`, `what`) are stripped and never spread. Only one spread form may appear per outer call.
 
 ```
 # Spreads all data fields from dialog.dir.open into the outer call
 filesystem.list (dialog.dir.open) recursive
 ```
 
-**Cancelled handling (both forms):**
-
-If the inner call responds with `cancelled`, the hub halts immediately and does not forward the outer call. The `cancelled` response is returned to the original caller as the result of the entire expression. `cancelled` indicates the inner call completed gracefully but produced no usable output — this is not an error.
-
 **Error handling (both forms):**
 
-If the inner call responds with `error` or `custom_error`, the hub halts and returns that error to the original caller. The outer call is never forwarded.
+If the inner call responds with `error`, the hub halts and returns that error to the original caller. The outer call is never forwarded.
 
 **Nesting:**
 
@@ -169,10 +159,7 @@ Inline calls may nest — an inner call may itself contain an inline call. Reada
 
 ## 5. Errors
 
-Error responses follow the same grammar as success responses. The presence of `error` or `custom_error` marks the response as an error; `code=` carries a standard or custom identifier; `what=` carries a human-readable description.
-
-- **`error`** — used for standard protocol errors and generic node errors. The `code=` value should be one of the standard error codes defined below.
-- **`custom_error`** — used by a node when the error corresponds to a named entry in its manifest `errors` field (see [MANIFESTS.md §4](MANIFESTS.md)). The `code=` value is node-defined.
+Error responses follow the same grammar as success responses. The presence of `error` marks the response as an error; `code=` carries a standard or custom identifier; `what=` carries a human-readable description.
 
 Every error response also carries exactly one **error origin flag** indicating where the error originated (see Section 6).
 
@@ -183,87 +170,48 @@ Every error response also carries exactly one **error origin flag** indicating w
 # Hub-produced argument validation error:
 ~h1:time.get_time error code=RequiredArgumentMissing what="Missing required argument: timezone" cast_error capture=SPORE.hub
 
-# Node-produced generic error:
+# Node-produced error:
 ~h1:time.get_time error code=Runtime what="Internal clock failure" node_error capture=com.example.clock
-
-# Node-produced custom_error (declared in manifest):
-~h1:time.get_time custom_error code=clock.err.invalid_timezone what="Unknown timezone: Fakezone" node_error capture=com.example.clock
 ```
 
-The caller checks for `ok`, `error`, `custom_error`, or `cancelled` on every response — exactly one will be present. When `error` or `custom_error` is present, `code=` and `what=` will always be set.
+The caller checks for `ok` or `error` on every response — exactly one will be present. When `error` is present, `code=` and `what=` will always be set.
 
 **Standard error codes:**
 
-These are protocol-defined codes used with the `error` flag. Nodes should prefer these over inventing equivalent codes.
+Errors carry both a `code=` and a `module=` field. `code` gives the nature of the failure; `module` gives the system component where it occurred. Together they express what was spec-defined error codes like `RouteNotFound` — e.g. `code=Missing module=Route`.
 
-*Internal / meta:*
-
-| Code | Meaning |
-|---|---|
-| `UnknownFailure` | An error occurred but the cause cannot be determined |
-| `SporeFailure` | A failure internal to the Spore OS hub or runtime. **Hub-only** — the hub blocks this code if a node emits it. |
-| `ProtocolFailure` | A violation of the Spore OS wire protocol |
-| `ConnectionFailure` | The connection between parties could not be established or was lost |
-
-*General:*
+*Codes:*
 
 | Code | Meaning |
 |---|---|
 | `Generic` | A general-purpose error with no more specific category |
-| `Fatal` | An unrecoverable error; the node or operation cannot continue |
+| `ConnectionFailure` | The connection between parties could not be established or was lost |
+| `HandshakeDenial` | The hub refused to complete a node handshake |
+| `InitializationFailure` | A component failed to initialize |
+| `Malformed` | A message or value could not be parsed |
+| `Missing` | An expected resource, argument, or route was not found |
+| `NotApplicable` | The operation is not applicable in this context |
+| `NotImplemented` | The subject is declared but not yet implemented |
+| `NotPermitted` | The caller is not permitted to perform this action |
 | `Timeout` | An operation did not complete within the allowed time |
-| `Busy` | The node or resource is temporarily unavailable |
-| `ResourcesExhausted` | A resource limit has been reached (memory, file handles, etc.) |
-| `Deprecated` | The called subject or argument is deprecated and no longer supported |
-| `Runtime` | An error occurred during execution not attributable to caller inputs |
-| `Logic` | An internal logic error or invariant violation in the node |
-
-*Route:*
-
-| Code | Meaning |
-|---|---|
-| `RouteNotFound` | No installed node declares this subject — no manifest in the registry owns it |
-| `RouteNotConnected` | The subject is declared in an installed node's manifest, but that node is not currently connected |
-| `RouteNotAvailable` | A matching node exists but cannot handle the call right now |
-| `RouteNotAllowed` | The caller is not permitted to call this subject |
-| `RouteNotImplemented` | The subject is declared in the manifest but not yet implemented |
-
-*Message:*
-
-| Code | Meaning |
-|---|---|
-| `MessageNotValid` | The message is structurally valid but semantically rejected |
-| `MessageMalformed` | The message could not be parsed |
-
-*Arguments:*
-
-| Code | Meaning |
-|---|---|
-| `RequiredArgumentMissing` | A required argument was not provided |
-| `ArgumentInvalidType` | An argument value is the wrong type |
-| `ArgumentConflict` | Two or more arguments are mutually exclusive but both were provided |
-| `ArgumentOutOfRange` | An argument value is outside the accepted range |
-| `ArgumentUnrecognized` | An argument was provided that the subject does not accept |
-| `ArgumentDuplicated` | The same argument key appears more than once |
-| `ReservedKeyword` | A protocol-reserved keyword was used where it is not permitted (e.g. as an argument name) |
-
-*Flags:*
-
-| Code | Meaning |
-|---|---|
-| `FlagConflict` | Two or more flags are mutually exclusive but both were provided |
-| `FlagUnrecognized` | A flag was provided that the subject does not accept |
-| `FlagDuplicated` | The same flag appears more than once |
-
-*Handles:*
-
-| Code | Meaning |
-|---|---|
-| `HandleMissing` | A call was sent without a required `~handle` |
+| `UserDenial` | A user explicitly denied the operation |
 | `HandleInUse` | A handle was reused before the previous call with that handle completed |
-| `HandleExpired` | A response arrived for a handle that is no longer active |
+| `ReservedLanguage` | A reserved keyword or namespace was used where it is not permitted |
 
-Node-defined custom error codes should be declared in the manifest `errors` list so callers know what to expect (see [MANIFESTS.md §4](MANIFESTS.md)).
+*Modules:*
+
+| Module | Component |
+|---|---|
+| `Bus` | Internal message routing bus |
+| `Hub` | Hub process |
+| `Hyphae` | Hyphae user-space layer |
+| `Manifest` | Manifest parsing or validation |
+| `Message` | Wire message parsing |
+| `Node` | Node lifecycle or connection |
+| `Permission` | Permission management |
+| `Policy` | Policy enforcement |
+| `Registry` | Node registry |
+| `Spore` | Hub API handler |
 
 > Error events are also emitted on the witness stream as `spore_event` messages for passive observation (see [SPEC.md §9](SPEC.md)).
 
@@ -285,11 +233,10 @@ The following argument names are reserved by the protocol. They may not be used 
 | Keyword | Role | Meaning |
 |---|---|---|
 | `ok` | flag | Hub-injected. Marks this response as a success. |
-| `error` | flag | Written by the responding node or hub. Marks this response as a standard protocol error. `code=` will be one of the standard error codes. |
-| `custom_error` | flag | Written by the responding node. Marks this response as a node-defined custom error declared in the manifest `errors` field. |
-| `cancelled` | flag | Written by the responding node. Marks this response as a graceful non-result — the call completed without error but produced no output (e.g. a user dismissed a dialog). No data fields will be present. `ok` is never present alongside `cancelled`. |
-| `code` | string | Error identifier. Always present with `error` or `custom_error`. Standard codes are unnamespaced (e.g. `RouteNotFound`); custom codes follow the `nodename.err.reason` convention. |
-| `what` | string | Human-readable error description. Always present with `error` or `custom_error`. |
+| `error` | flag | Written by the responding node or hub. Marks this response as an error. `code=`, `module=`, and `what=` will be set. |
+| `code` | string | Error code (see §5). |
+| `module` | string | Hub component where the error originated (see §5). |
+| `what` | string | Human-readable error description. Always present with `error`. |
 
 **Error origin flags** — exactly one is present on every error response. Indicates where the error originated. Useful for debugging and tracing.
 
