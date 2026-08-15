@@ -243,19 +243,20 @@ This allows a witness to correlate hub events with message traffic by timestamp.
 
 A node may emit observability messages directly to the witness stream without those messages being part of any call or response. This is distinct from the hub observing traffic — the node is proactively publishing a diagnostic, audit, or lifecycle event of its own.
 
-A node emits a node witness message by sending a line prefixed with the reserved `witness` token directly on its socket connection:
+A node emits a node witness message by sending a line prefixed with the reserved `witness` token directly on its socket connection. The main message content is carried in a `body=` argument; any additional structured fields follow as key-value pairs:
 
 ```
-witness message="loaded config"
+witness body="loaded config"
+witness body="config loaded" source="init" version="1.2.0"
 ```
 
 The hub intercepts this line before routing (it is never treated as a call or subject). It appends `cast=` identifying the emitting node and `spore_time=`, tags it `spore_node`, and dispatches to all registered witnesses. No response is sent back to the node — this is fire-and-forget.
 
 ```
-witness message="loaded config" cast=com.example.mynode spore_node spore_time=1744732800000
+witness body="loaded config" cast=com.example.mynode spore_node spore_time=1744732800000
 ```
 
-The body after the `witness ` prefix is free-form. Nodes are responsible for choosing a format useful to their witnesses.
+All arguments follow standard argument syntax (see [GRAMMAR.md §3](GRAMMAR.md)). `body=` carries the primary human-readable message; additional key-value pairs carry structured metadata. The `body=` argument is required.
 
 ### 9.5 Hub Output
 
