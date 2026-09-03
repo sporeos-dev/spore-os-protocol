@@ -38,8 +38,8 @@ This group covers the full node lifecycle: registering manifests, starting and s
 SPORE.node.install path=/nodes/clock/clock.manifest.spore.yaml ~h1
 ← ~h1:SPORE.node.install ok capture=SPORE.hub
 
-# Inline substitution — open a file picker to choose the manifest:
-SPORE.node.install path=(dialog.file_picker) ~h2
+# Pipeline — open a file picker, then install the selected manifest:
+dialog.file_picker ~h2 | SPORE.node.install
 ← ~h2:SPORE.node.install ok capture=SPORE.hub
 
 SPORE.node.uninstall node=com.example.clock ~h3

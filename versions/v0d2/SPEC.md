@@ -81,6 +81,8 @@ The canonical socket path for each platform is defined by the platform installer
 
 All messages are **newline-delimited plaintext strings**. No binary framing. Type information declared in the manifest is advisory — it helps implementors know what to expect, but the hub does not validate or coerce types.
 
+A single logical message may span multiple lines when block values (`key=<<`) are used. In this case the message is not complete until all open blocks have been closed with `>>`. See [GRAMMAR.md §3](GRAMMAR.md) for the full block value syntax.
+
 ### 3.3 Manifest Format
 
 Manifests are authored in **YAML**. The hub reads the YAML file directly.
@@ -134,7 +136,7 @@ SPORE.node.list             # hub internal
 
 ## 6. Wire Grammar
 
-All messages on the Spore OS wire share a single unified grammar — calls, responses, errors, and broadcast. The grammar covers argument syntax (key-value pairs, flags, booleans, arrays, objects, and inline call substitution), the `~handle` correlation mechanism, standard error codes, and the full set of reserved protocol keywords and prefixes.
+All messages on the Spore OS wire share a single unified grammar — calls, responses, errors, and broadcast. The grammar covers argument syntax (key-value pairs, flags, booleans, arrays, objects, and pipelines), the `~handle` correlation mechanism, standard error codes, and the full set of reserved protocol keywords and prefixes.
 
 See [GRAMMAR.md](GRAMMAR.md) for the full wire grammar reference.
 
@@ -181,7 +183,7 @@ logger.append entry="started" ~l2
 
 ### 7.3 Composition
 
-The output of one call feeds the next. The orchestrating node sequences calls itself; individual nodes are unaware of each other. The hub-level mechanism for this is inline call substitution (see [GRAMMAR.md §4](GRAMMAR.md)); beyond that, composition is a node implementation concern.
+The output of one call can feed the next through a hub-side pipeline (see [GRAMMAR.md §4](GRAMMAR.md)). The hub sequences pipeline stages; individual nodes are unaware of each other. Beyond pipelines, composition is a node implementation concern.
 
 ---
 
@@ -381,9 +383,9 @@ Trust is set in the manifest by the node author. A user may override trust at in
 
 `protected` risk capabilities and `system` trust assignments are governed by a whitelist hardcoded in the hub binary. This cannot be modified by config file or runtime call — the hub binary is the trust anchor for protected resources. Nodes not on the whitelist receive `NotPermitted` regardless of their stated trust level.
 
-### 11.6 Inline Call Trust Preservation
+### 11.6 Pipeline Trust Preservation
 
-When the hub expands an inline call (see [GRAMMAR.md §4](GRAMMAR.md)), the inner call is forwarded with `cast=<original_caller>`. The hub never substitutes its own identity (`cast=SPORE.hub`) for hub-generated inner calls. This ensures that inline call substitution cannot be used to escalate privileges to a higher trust level.
+When the hub executes a pipeline (see [GRAMMAR.md §4](GRAMMAR.md)), every stage is forwarded with `cast=<original_caller>`. The hub never substitutes its own identity (`cast=SPORE.hub`) for hub-generated stages. This ensures that pipelines cannot be used to escalate privileges to a higher trust level.
 
 ---
 

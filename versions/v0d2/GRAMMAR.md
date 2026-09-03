@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 **Schema:** `SPORE/v0d2`  
 **Spec:** [SPEC.md](SPEC.md)
 
-This document defines the exact syntax of all messages on the Spore OS wire — message shapes, handles, argument syntax, inline call substitution, error grammar, and reserved keywords.
+This document defines the exact syntax of all messages on the Spore OS wire — message shapes, handles, argument syntax, pipelines, error grammar, and reserved keywords.
 
 ---
 
@@ -76,8 +76,7 @@ Rules:
 | Object | `{...}` | `{key: value}` |
 | Flag (bare token) | `flag_name` | `recursive` |
 | Boolean | `key=true\|false` | `followSymlinks=true` |
-| Inline call (key binding) | `key=(subject [args...])` | `path=(dialog.file_picker)` |
-| Inline call (spread) | `(subject [args...])` | `(dialog.dir.open)` |
+| Block value | `key=<<` | `content=<<` |
 
 **Double-quoted string escapes:**
 
@@ -116,44 +115,74 @@ path="C:\\Users\\test"    # backslash (Windows path)
 
 Use flags for behavior toggles; use booleans for explicit settings.
 
+**Block Values:**
+
+A `key=<<` argument signals that the value for that key spans multiple lines. Block content begins on the line immediately following the opening call line and continues until a `>>` line is encountered.
+
+The `>>` line terminates the current block. Any remaining tokens on the `>>` line are parsed as call arguments — flags, key-value pairs, and further `key=<<` openings are all valid. The message is complete when a `>>` line is parsed and no open block remains.
+
+```
+filesystem.write path=/tmp/out.txt content=<< ~w1
+line one
+line two
+>>
+```
+
+Multiple blocks in a single call — each `>>` closes the current block and argument parsing resumes on the same line:
+
+```
+diff.compare before=<<
+original line one
+original line two
+>> after=<<
+new line one
+new line two
+>> ~d1
+```
+
+Flags and other arguments may appear on `>>` lines alongside new block openings:
+
+```
+something.something before=<<
+one line
+two line
+>> verbose continue=<<
+three line
+four line
+>> ~w1
+```
+
+Rules:
+
+- `<<` is only valid as the value of a named key — `key=<<`. A bare `<<` not bound to a key is a parse error.
+- `>>` must be the first token on its line. Tokens following `>>` on the same line are parsed as call arguments.
+- Block content is **raw** — no argument parsing and no escape processing. Blank lines within a block are preserved.
+- A `>>` line that leaves no open blocks completes the message and triggers dispatch.
+- The `~handle` may appear anywhere in the argument list — on the opening line, on any `>>` line, or as the last token on the final `>>`.
+
 ---
 
-## 4. Inline Call Substitution
+## 4. Pipelines
 
-There are two inline call forms. Both are resolved **hub-side** before the outer call is forwarded to its receiver. The receiving node sees only the resolved values — it is unaware substitution occurred. The caster writes the inline syntax; the hub expands it transparently.
-
-The hub generates an internal handle for each inner call using the `~~` prefix followed by a 4-character random hex token (e.g. `~~a3f9`). These hub-internal handles are distinct from caller-supplied handles and are never visible to the caster or receiver.
-
-**Form 1 — Key binding: `key=(subject [args...])`**
-
-The hub executes the inner call and binds one field from its response to the named key in the outer call. Field resolution follows this priority order:
-
-1. If the inner response has exactly one data field (excluding protocol fields `ok`, `error`, `capture`, `cast`, `code`, `what`), that field is used regardless of its name.
-2. If the inner response has multiple data fields, the hub looks for a field whose name matches the outer key. If found, it is used.
-3. If neither condition is satisfied, the hub returns an error to the original caller — the field cannot be resolved.
+A pipeline sequences calls hub-side with `|`. The hub executes stages from left to right. The response data from one stage is forwarded as arguments to the next, and each receiving node sees only a normal call with resolved arguments.
 
 ```
-SPORE.node.install path=(dialog.file_picker)
-SPORE.node.install path=(dialog.file_picker filters=[*.yaml])
-filesystem.read path=(shortpath project=notes)
+subject [key=value ...] [flag ...] ~handle [| subject [key=value ...] [flag ...]] ...
 ```
 
-**Form 2 — Spread: `(subject [args...])`**
-
-The hub executes the inner call and spreads all data fields from its response directly into the outer call as if they had been written there by the caller. Protocol fields (`ok`, `error`, `capture`, `cast`, `code`, `what`) are stripped and never spread. Only one spread form may appear per outer call.
-
 ```
-# Spreads all data fields from dialog.dir.open into the outer call
-filesystem.list (dialog.dir.open) recursive
+dialog.file_picker ~h2 | SPORE.node.install
+dialog.dir.open ~h3 | filesystem.list recursive
+source.open ~h4 | transform.normalize | destination.write
 ```
 
-**Error handling (both forms):**
+The first stage is the only stage written with a caller-supplied `~handle`; later stages must not include one. The handle identifies the entire pipeline. The hub generates internal handles for intermediate stages; their format and observability are implementation details. The caller receives only the final stage's response, under the original handle.
 
-If the inner call responds with `error`, the hub halts and returns that error to the original caller. The outer call is never forwarded.
+For each subsequent stage, the hub forwards data fields and non-protocol flags from the preceding successful response when their names match inputs declared by that stage. Fields and flags that do not match an input are ignored. Protocol fields (`ok`, `error`, `capture`, `cast`, `code`, `what`) are never forwarded.
 
-**Nesting:**
+Each stage may include its own explicit arguments and flags. If a forwarded field or flag duplicates an explicit argument or flag, the hub returns an error to the original caller and does not execute that stage.
 
-Inline calls may nest — an inner call may itself contain an inline call. Readability should guide usage; keep nesting shallow.
+If any stage responds with `error`, the hub halts the pipeline and returns that error to the original caller. Later stages are never executed.
 
 ---
 
@@ -275,9 +304,8 @@ Exactly one of `spore_incoming`, `spore_outgoing`, `spore_event`, or `spore_node
 | Token | Role |
 |---|---|
 | `~` prefix | Marks a caller-supplied correlation handle |
-| `~~xxxx` prefix | Hub-internal handle for inline call expansion. 4-character random hex suffix (e.g. `~~a3f9`). Never used by callers. |
 | `~handle:subject` | Response binding — correlates a response to its originating call and subject |
-| `()` wrapper | Inline call substitution, resolved hub-side (see Section 4) |
+| `|` | Pipeline separator, resolved hub-side (see Section 4) |
 | `witness` | Reserved line prefix. Witness copies sent to witness nodes are prefixed with this token. It is not a subject and cannot be used as one. |
 | `publish` | Reserved line prefix. Broadcast messages sent by publishing nodes are prefixed with this token. It is not a subject and cannot be used as one. |
 

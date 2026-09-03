@@ -103,9 +103,9 @@ clock.get_time timezone=UTC ~h1
 
 ---
 
-## Inline calls
+## Pipelines
 
-The hub resolves inner calls before forwarding the outer one: `path=(dialog.file_picker)` expands hub-side before the outer call is forwarded. See [SPEC.md §6.4](SPEC.md).
+The hub sequences pipeline stages and forwards matching response fields to the next stage: `dialog.file_picker ~h2 | SPORE.node.install`. Each stage sees a normal resolved call; the caller receives only the final response. See [GRAMMAR.md §4](GRAMMAR.md).
 
 ---
 
