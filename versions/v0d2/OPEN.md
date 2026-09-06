@@ -40,7 +40,6 @@ The trust/risk model is established in v0d2 and manifest fields are active. Howe
 
 | Subject | Purpose |
 |---|---|
-| `SPORE.permission.list` | List current permission grants |
 | `SPORE.permission.request` | Node requests access to a capability |
 | `SPORE.permission.grant` | Grant a node access to a capability |
 | `SPORE.permission.revoke` | Revoke a node's access to a capability |
@@ -83,3 +82,18 @@ The trust/risk model references "user preferences" and "user grants" without def
 - Whether preferences are editable at runtime or only at configuration time
 
 This is closely coupled with items 1 and 2.
+
+---
+
+## 6. Introspection Detail
+
+**Affected:** [HUB.md](HUB.md) — five introspection subjects specified, not yet implemented
+
+The introspection API replaces the per-category `*.list` / `*.help` subjects of earlier drafts. The command set and their roles are settled; the detail is not.
+
+**What needs to be decided:**
+- The internal shape of the `help=` and `state=` objects, and whether they are normative or implementation-defined
+- What counts as a valid introspection target, and whether that set is normative or left to the hub
+- The exact introspection hierarchy — what the root lists, and what walking it traverses
+- Whether `cursor=` is required or optional for `SPORE.complete` and `SPORE.hint`, and the behaviour when it is absent
+- The error behaviour for an unknown or non-inspectable target

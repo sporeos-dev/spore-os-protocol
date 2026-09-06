@@ -129,8 +129,16 @@ The hub resolves the subject against its manifest registry and routes to the con
 
 ```
 clock.get_time              # matches manifest api.name exactly
-SPORE.node.list             # hub internal
+SPORE.node.spawn            # hub internal
 ```
+
+### 5.2 Introspection Targets
+
+Only an exact `api.name` match is executable. This rule is absolute — the hub never routes a partial name, a prefix, or an inferred match.
+
+Introspection is separate. The introspection commands (see [HUB.md](HUB.md)) take their target as an argument rather than as a subject, so a target need not be executable. What the hub accepts as a target is an introspection concern, not an addressing one, and is not constrained by this section.
+
+Shells and command runners may layer interactive sugar over introspection — treating a bare prefix as a list request, a tab keypress as a completion request, or a trailing `help`/`state`/`list` as the corresponding command against the preceding target. This is **client behaviour only**. It does not change the wire grammar, and it does not make a prefix executable.
 
 ---
 
@@ -157,8 +165,8 @@ clock.get_time ~h1
 filesystem.read path=/documents/notes.txt ~r1
 ← ~r1:filesystem.read content="Q1 planning notes..." ok capture=com.example.filesystem
 
-SPORE.node.list ~meta
-← ~meta:SPORE.node.list nodes=["com.example.clock", "com.example.filesystem"] ok capture=SPORE.hub
+SPORE.list ~meta
+← ~meta:SPORE.list children=["SPORE", "com.example.clock", "com.example.filesystem"] ok capture=SPORE.hub
 ```
 
 ### 7.2 Command

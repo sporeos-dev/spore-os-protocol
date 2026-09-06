@@ -285,11 +285,11 @@ The following argument names are reserved by the protocol. They may not be used 
 | `spore_event` | flag | Marks this witness copy as a hub lifecycle or error event, not a routed message. |
 | `spore_node` | flag | Marks this witness copy as a node-emitted observability message — sent by the node itself, not observed by the hub from routed traffic. |
 
-**Node-emitted witness argument** — used only in node-emitted witness messages (`spore_node`). Not reserved from manifest use, but carries protocol-defined meaning on the witness line:
+**Conventional argument** — not reserved from manifest use, but carries protocol-defined meaning where it appears:
 
 | Keyword | Type | Meaning |
 |---|---|---|
-| `body` | string | The primary message content of a node-emitted witness line. Required on all `witness` lines sent by nodes. Additional key-value pairs may follow as structured metadata. |
+| `body` | string | The primary content of a message. Required on all `witness` lines sent by nodes, where additional key-value pairs may follow as structured metadata. Also carries the target or partial expression passed to the introspection subjects (see [HUB.md](HUB.md)). |
 
 Exactly one of `spore_incoming`, `spore_outgoing`, `spore_event`, or `spore_node` is present on every witness copy.
 

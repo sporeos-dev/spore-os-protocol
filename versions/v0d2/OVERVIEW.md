@@ -140,13 +140,34 @@ Trust is declared in the manifest and may be overridden by the user at install t
 
 ---
 
+## Introspection
+
+Five commands cover discovery, inspection, and interactive guidance. Each takes `body=` — the target or partial expression being inspected.
+
+| Command | Answers |
+|---|---|
+| `SPORE.help` | What is this, and how is it used? (static, manifest-derived) |
+| `SPORE.state` | What is true about it right now? (runtime) |
+| `SPORE.list` | What are its immediate children? |
+| `SPORE.complete` | What could this partial text validly become? |
+| `SPORE.hint` | What is relevant to what I'm typing? |
+
+```
+SPORE.list body=SPORE.node ~h1
+← ~h1:SPORE.list children=["SPORE.node.install", "SPORE.node.spawn", "SPORE.node.kill"] ok capture=SPORE.hub
+```
+
+A target need not be an executable subject — only exact API names are callable, but introspection is free to describe more than that. Shells may sugar this (bare prefix means list, tab means complete), but that is client behaviour and never makes a prefix executable.
+
+---
+
 ## Hub API (built-in subjects)
 
 The hub exposes `SPORE.*` subjects grouped by concern. The full normative contract with examples is in [HUB.md](HUB.md).
 
-- **[Node Management](HUB.md#node-management)** — install, uninstall, spawn, kill, list, and describe nodes
-- **[Introspection](HUB.md#introspection)** — list and describe subjects and error codes across all nodes
-- **[Topics](HUB.md#topics)** — subscribe, unsubscribe, and discover topics; hub lifecycle events
+- **[Introspection](HUB.md#introspection)** — help, state, list, complete, and hint across everything the hub knows
+- **[Node Management](HUB.md#node-management)** — install, uninstall, spawn, and kill nodes
+- **[Topics](HUB.md#topics)** — subscribe and unsubscribe; hub lifecycle events
 - **[Permissions](HUB.md#permissions)** — request, grant, and revoke capability access
 - **[Security](HUB.md#security)** — keyring management and signature signing/verification
 

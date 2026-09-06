@@ -17,14 +17,84 @@ The normative `SPORE.*` subjects and topics a conforming hub must expose. The hu
 
 ---
 
-## Meta
+## Introspection
+
+Five commands form the introspection API. Together they let clients, shells, and tools discover, inspect, complete, and guide Spore expressions without weakening the rule that an executable subject must exactly match a manifest API entry.
+
+Each takes `body=` — the target or partial expression being inspected. `SPORE.complete` and `SPORE.hint` also accept `cursor=`, the caller's cursor offset into `body=`. A target need not be an executable subject; see [SPEC.md §5.2](SPEC.md).
+
+| Command | Answers | Returns |
+|---|---|---|
+| `SPORE.help` | What is this, and how is it used? | `help=` |
+| `SPORE.state` | What is true about it right now? | `state=` |
+| `SPORE.list` | What are its immediate children? | `children=` |
+| `SPORE.complete` | What could this partial text validly become? | `completions=` |
+| `SPORE.hint` | What is relevant to what I'm typing? | any of the above |
+
+**`SPORE.help`** returns static information about a target — what it is, what it means, how it is used, and what inputs and outputs are expected. Help is manifest-derived and does not depend on current runtime state.
 
 ```
-SPORE.help ~h1
-← ~h1:SPORE.help nodeinfo={...} ok capture=SPORE.hub
+SPORE.help body=clock.get_time ~h1
+← ~h1:SPORE.help help={...} ok capture=SPORE.hub
+
+SPORE.help body=com.example.clock ~h2
+← ~h2:SPORE.help help={...} ok capture=SPORE.hub
+
+SPORE.help body=RouteNotFound ~h3
+← ~h3:SPORE.help help={...} ok capture=SPORE.hub
 ```
 
-`SPORE.help` returns the hub's own node info — equivalent to calling `SPORE.node.help` on itself.
+Called with no `body=`, `SPORE.help` describes the hub itself.
+
+**`SPORE.state`** returns runtime information about a target — whether a node is installed or connected, whether a topic has subscribers, whether a permission is granted, what hub-level condition currently applies. State describes what is true now, not how to use the thing.
+
+```
+SPORE.state body=com.example.clock ~h1
+← ~h1:SPORE.state state={...} ok capture=SPORE.hub
+
+SPORE.state body=SPORE.node.spawned ~h2
+← ~h2:SPORE.state state={...} ok capture=SPORE.hub
+```
+
+**`SPORE.list`** returns the immediate children of a target in the introspection hierarchy. With no `body=`, the target is the introspection root.
+
+```
+SPORE.list ~h1
+← ~h1:SPORE.list children=["SPORE", "com.example.clock", "com.example.filesystem"] ok capture=SPORE.hub
+
+SPORE.list body=SPORE.node ~h2
+← ~h2:SPORE.list children=["SPORE.node.install", "SPORE.node.spawn", "SPORE.node.kill"] ok capture=SPORE.hub
+
+SPORE.list body=com.example.clock ~h3
+← ~h3:SPORE.list children=["clock.get_time", "clock.set_timer"] ok capture=SPORE.hub
+```
+
+Listing is hierarchical: the root lists the hub and every installed node, a node lists its commands, a prefix lists the names below it, and a topic area lists its topics. `SPORE.list` subsumes the per-category list commands of earlier drafts — any result those produced is reachable by walking the hierarchy.
+
+**`SPORE.complete`** returns possible textual completions for an incomplete Spore expression. It is intended for shells, command runners, and editors. Completion is about syntax and continuation — what this text could validly become — which makes it distinct from `SPORE.list`, which is about what belongs to a target.
+
+```
+SPORE.complete body="clock.get_ti" cursor=12 ~h1
+← ~h1:SPORE.complete completions=["clock.get_time"] ok capture=SPORE.hub
+
+SPORE.complete body="clock.get_time timez" cursor=20 ~h2
+← ~h2:SPORE.complete completions=["timezone="] ok capture=SPORE.hub
+```
+
+**`SPORE.hint`** returns contextual guidance for an in-progress or complete expression. A hint response may carry any combination of `help=`, `state=`, `children=`, and `completions=`, along with examples, warnings, validation information, or a suggested default action.
+
+```
+SPORE.hint body="clock.set_timer " cursor=16 ~h1
+← ~h1:SPORE.hint help={...} completions=["duration=", "label="] ok capture=SPORE.hub
+```
+
+`SPORE.hint` is the broadest interactive affordance, for workflows where the user is typing, exploring, or unsure what comes next. It does not replace the precise commands — a client that knows exactly what it needs should call `SPORE.help`, `SPORE.state`, `SPORE.list`, or `SPORE.complete` directly. Hint responses are contextual, so a client must not assume any particular section is present.
+
+### Interactive Sugar
+
+Shells and command runners may layer sugar over these commands: a bare non-executable prefix such as `SPORE.node` treated as `SPORE.list body=SPORE.node`, a tab keypress treated as `SPORE.complete` or `SPORE.hint` with the current input and cursor, a trailing `help`, `state`, or `list` treated as the corresponding command against the preceding target.
+
+This is client behaviour. It does not change the wire grammar and does not make prefixes executable. See [SPEC.md §5.2](SPEC.md).
 
 ---
 
@@ -58,47 +128,7 @@ SPORE.node.kill node=com.example.clock ~h2
 ← ~h2:SPORE.node.kill ok capture=SPORE.hub
 ```
 
-**Listing and describing** — `SPORE.node.list` returns all installed node IDs. `SPORE.node.help` returns the manifest details for a specific node.
-
-```
-SPORE.node.list ~h1
-← ~h1:SPORE.node.list nodes=["com.example.clock", "com.example.filesystem"] ok capture=SPORE.hub
-
-SPORE.node.help node=com.example.clock ~h3
-← ~h3:SPORE.node.help nodeinfo={...} ok capture=SPORE.hub
-```
-
----
-
-## Introspection
-
-These subjects expose the hub's knowledge of what subjects and error codes exist across all installed nodes. Useful for discovery, tooling, and building dynamic interfaces.
-
-**Subjects** — `SPORE.command.list` lists all known API subjects across installed nodes; scope to one node with `node=`. `SPORE.command.help` describes a specific subject.
-
-```
-SPORE.command.list ~h1
-← ~h1:SPORE.command.list commands=["clock.get_time", "filesystem.read", ...] ok capture=SPORE.hub
-
-SPORE.command.list node=com.example.clock ~h2
-← ~h2:SPORE.command.list commands=["clock.get_time", "clock.set_timer"] ok capture=SPORE.hub
-
-SPORE.command.help command=clock.get_time ~h3
-← ~h3:SPORE.command.help commandinfo={...} ok capture=SPORE.hub
-```
-
-**Errors** — `SPORE.error.list` lists all standard protocol error codes, or a specific node's custom errors when `node=` is passed. `SPORE.error.help` describes any error code — standard or custom.
-
-```
-SPORE.error.list ~h1
-← ~h1:SPORE.error.list errors=["RouteNotFound", "RouteNotConnected", ...] ok capture=SPORE.hub
-
-SPORE.error.list node=com.example.clock ~h2
-← ~h2:SPORE.error.list errors=["clock.err.invalid_timezone", ...] ok capture=SPORE.hub
-
-SPORE.error.help code=RouteNotFound ~h3
-← ~h3:SPORE.error.help errorinfo={...} ok capture=SPORE.hub
-```
+**Inspecting nodes** — node management exposes no list or describe subjects of its own. Use `SPORE.list` to enumerate installed nodes and their commands, `SPORE.help` for a node's manifest details, and `SPORE.state` for whether it is installed or connected.
 
 ---
 
@@ -116,9 +146,9 @@ SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h2
 ← ~h2:SPORE.topic.unsubscribe ok capture=SPORE.hub
 ```
 
-**Discovery** — `SPORE.topic.list` and `SPORE.topic.help` work the same way as their command equivalents: list all topics (or scope to a node), and describe a specific topic.
+**Discovery** — topics have no list or describe subjects of their own. Use `SPORE.list` to enumerate them, `SPORE.help` to describe one, and `SPORE.state` to see whether it currently has subscribers.
 
-**Hub lifecycle events** — the hub publishes no lifecycle topics of its own. Inspect node state directly via `SPORE.node.state`.
+**Hub lifecycle events** — the hub publishes no lifecycle topics of its own. Inspect node state directly via `SPORE.state`.
 
 ---
 
@@ -141,7 +171,7 @@ SPORE.permission.revoke node=com.example.agent capability=filesystem.read ~h3
 ← ~h3:SPORE.permission.revoke ok capture=SPORE.hub
 ```
 
-Both API subjects and topics are considered capabilities. `SPORE.permission.list` returns current grants, optionally filtered by node or capability.
+Both API subjects and topics are considered capabilities. Current grants are inspected with `SPORE.list body=SPORE.permission` and `SPORE.state`.
 
 ---
 
@@ -149,7 +179,7 @@ Both API subjects and topics are considered capabilities. `SPORE.permission.list
 
 The security group manages the hub's keyring of trusted public keys and handles signing and verifying files (manifests, binaries). All subjects in this group are `protected` — accessible only to hub-whitelisted nodes.
 
-**Keyring** — the keyring is the hub's set of trusted public keys used to verify node manifests and binaries at install time. `SPORE.security.keyring.grant` and `SPORE.security.keyring.revoke` add and remove keys; `SPORE.security.keyring.list` and `SPORE.security.keyring.info` inspect them.
+**Keyring** — the keyring is the hub's set of trusted public keys used to verify node manifests and binaries at install time. `SPORE.security.keyring.grant` and `SPORE.security.keyring.revoke` add and remove keys; the keyring is inspected through `SPORE.list` and `SPORE.state`.
 
 ```
 SPORE.security.keyring.grant path=/keys/trusted.gpg ~h1
