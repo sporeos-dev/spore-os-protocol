@@ -178,11 +178,15 @@ source.open ~h4 | transform.normalize | destination.write
 
 The first stage is the only stage written with a caller-supplied `~handle`; later stages must not include one. The handle identifies the entire pipeline. The hub generates internal handles for intermediate stages; their format and observability are implementation details. The caller receives only the final stage's response, under the original handle.
 
+Intermediate stages may be routed internally with `cast=<hub pipeline identity>` rather than the original caller, since the hub itself is correlating that stage's response — this is a routing implementation detail. The final stage is always forwarded with `cast=<original_caller>`, identical to a non-piped call. Regardless of the wire-level `cast=` used for internal routing, trust and permission evaluation for every stage is always performed against the original caller (see [SPEC.md §11.6](SPEC.md)).
+
 For each subsequent stage, the hub forwards data fields and non-protocol flags from the preceding successful response when their names match inputs declared by that stage. Fields and flags that do not match an input are ignored. Protocol fields (`ok`, `error`, `capture`, `cast`, `code`, `what`) are never forwarded.
 
 Each stage may include its own explicit arguments and flags. If a forwarded field or flag duplicates an explicit argument or flag, the hub returns an error to the original caller and does not execute that stage.
 
 If any stage responds with `error`, the hub halts the pipeline and returns that error to the original caller. Later stages are never executed.
+
+The hub imposes a default timeout on each pipeline stage while waiting for that stage's response; exceeding it halts the pipeline with `Timeout.Pipe`. A stage may override this with the reserved `timeout=` argument (see Section 6) — useful for stages that depend on user interaction (e.g. a file picker dialog) and may legitimately take longer than the default.
 
 ---
 
@@ -292,6 +296,12 @@ The following argument names are reserved by the protocol. They may not be used 
 | `body` | string | The primary content of a message. Required on all `witness` lines sent by nodes, where additional key-value pairs may follow as structured metadata. Also carries the target or partial expression passed to the introspection subjects (see [HUB.md](HUB.md)). |
 
 Exactly one of `spore_incoming`, `spore_outgoing`, `spore_event`, or `spore_node` is present on every witness copy.
+
+**Pipeline stage control arguments** — reserved only within a pipeline stage (see Section 4); the hub consumes them and never forwards them to the receiving node:
+
+| Keyword | Type | Meaning |
+|---|---|---|
+| `timeout` | integer or `false` | Overrides the hub's default per-stage wait for that stage's response. An integer is the number of seconds to wait before halting the pipeline with `Timeout.Pipe`. `false` disables the timeout for that stage and waits indefinitely. |
 
 **Caller behavior flags** — added by the caller to the outgoing call. The hub forwards the call unchanged; receiver-side client libraries must ignore them. On the return path, the hub acts on any caller behavior flags before delivering the response:
 

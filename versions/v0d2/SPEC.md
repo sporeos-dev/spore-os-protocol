@@ -393,7 +393,9 @@ Trust is set in the manifest by the node author. A user may override trust at in
 
 ### 11.6 Pipeline Trust Preservation
 
-When the hub executes a pipeline (see [GRAMMAR.md §4](GRAMMAR.md)), every stage is forwarded with `cast=<original_caller>`. The hub never substitutes its own identity (`cast=SPORE.hub`) for hub-generated stages. This ensures that pipelines cannot be used to escalate privileges to a higher trust level.
+When the hub executes a pipeline (see [GRAMMAR.md §4](GRAMMAR.md)), every stage's trust and permission evaluation is performed against the **original caller** that initiated the pipeline — never against the hub's own identity. A hub-generated intermediate stage must not be treated as a higher-trust request merely because the hub is orchestrating it.
+
+The hub may route intermediate pipeline stages internally under its own identity (`cast=SPORE.pipe`) purely as an implementation detail of correlating each stage's response back to the pipeline orchestrator. This does not affect trust evaluation, which always resolves to the original caller. The final stage of a pipeline is delivered with `cast=<original_caller>`, matching a non-piped call. This ensures that pipelines cannot be used to escalate privileges to a higher trust level.
 
 ---
 
