@@ -83,10 +83,25 @@ properties:
       - spore
       - hyphae
 
+  # deprecated, to remove in future
+  # witness property will move to roles
   witness:
     type: boolean
     description: If true, this node receives all witness traffic from the hub (fire-and-forget copies of every message). Default is false.
     default: false
+
+  # raw and hint not yet implemented
+  # look in v0d3
+  roles:
+    type: array
+    description: Canonical roles assigned to this node.
+    items:
+      type: string
+      enum:
+        - raw
+        - hint
+        - witness
+    default: []
 
   api:
     type: array
