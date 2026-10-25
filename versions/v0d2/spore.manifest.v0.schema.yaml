@@ -24,6 +24,7 @@ properties:
   id:
     type: string
     description: Reverse-domain unique identifier for this node.
+    pattern: "^[^:]+$"
     examples:
       - com.example.clock
       - SPORE.filesystem
@@ -77,7 +78,7 @@ properties:
   namespace:
     type: string
     description: Set the namespace.
-    default: any
+    default: hyphae
     enum:
       - any
       - spore
@@ -150,6 +151,7 @@ definitions:
       name:
         type: string
         description: "Error code for this error, by convention nodename.err.reason (e.g. clock.err.invalid_timezone)."
+        pattern: "^[^:]+$"
       description:
         type: string
         description: "What this error means."
@@ -222,6 +224,7 @@ definitions:
       - standard
       - personal
       - secret
+      - admin
       - protected
 
   api_entry:
@@ -236,6 +239,7 @@ definitions:
       name:
         type: string
         description: Subject name for this entry.
+        pattern: "^[^:]+$"
       description:
         type: string
         description: Description of the entry.
@@ -274,6 +278,7 @@ definitions:
       name: 
         type: string
         description: Subject name for this topic.
+        pattern: "^[^:]+$"
       description:
         type: string
         description: Description of the topic.

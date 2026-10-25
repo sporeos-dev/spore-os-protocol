@@ -114,9 +114,12 @@ dialog.file_picker ~h2 | SPORE.node.install
 
 SPORE.node.uninstall node=com.example.clock ~h3
 ← ~h3:SPORE.node.uninstall ok capture=SPORE.hub
+
+SPORE.node.reinstall node=com.example.clock load ~h4
+← ~h4:SPORE.node.reinstall ok capture=SPORE.hub
 ```
 
-`SPORE.node.uninstall` accepts `node=` (reverse-domain ID).
+`SPORE.node.uninstall` accepts `node=` (reverse-domain ID) and removes its stored capability grants. `SPORE.node.reinstall` uninstalls the named node, then installs the manifest at its registered path; it can therefore apply a changed manifest, including one with a new node ID. Add the `load` flag to `SPORE.node.install` or `SPORE.node.reinstall` to spawn the node after a successful install.
 
 **Spawning and killing** starts or stops a node process. The hub uses the `app` field from the installed manifest to launch the node. Spawned nodes are always headless.
 
@@ -126,7 +129,12 @@ SPORE.node.spawn node=com.example.clock ~h1
 
 SPORE.node.kill node=com.example.clock ~h2
 ← ~h2:SPORE.node.kill ok capture=SPORE.hub
+
+SPORE.node.reload node=com.example.clock ~h3
+← ~h3:SPORE.node.reload ok capture=SPORE.hub
 ```
+
+`SPORE.node.reload` kills and then spawns the named node.
 
 **Inspecting nodes** — node management exposes no list or describe subjects of its own. Use `SPORE.list` to enumerate installed nodes and their commands, `SPORE.help` for a node's manifest details, and `SPORE.state` for whether it is installed or connected.
 
@@ -159,9 +167,9 @@ SPORE.topic.unsubscribe topic=SPORE.node.spawned ~h2
 Permissions govern which nodes may call which capabilities (subjects or topics). The core flow is: a node requests access, the hub presents it to the user, and the result is granted or denied.
 
 ```
-# Node requests access at runtime:
-SPORE.permission.request node=com.example.agent capability=filesystem.read ~h1
-← ~h1:SPORE.permission.request granted ok capture=SPORE.hub
+# Node requests a one-use, 30-second permit for itself at runtime:
+SPORE.permission.request capability=filesystem.read ~h1
+← ~h1:SPORE.permission.request permission.token=<opaque-token> ok capture=SPORE.hub
 
 # Granting and revoking can also be done directly:
 SPORE.permission.grant node=com.example.agent capability=filesystem.read ~h2
@@ -171,7 +179,7 @@ SPORE.permission.revoke node=com.example.agent capability=filesystem.read ~h3
 ← ~h3:SPORE.permission.revoke ok capture=SPORE.hub
 ```
 
-Both API subjects and topics are considered capabilities. Current grants are inspected with `SPORE.list body=SPORE.permission` and `SPORE.state`.
+`SPORE.permission.request` always applies to the calling node. The hub derives that node from the request origin; a caller-supplied `node=` argument is ignored. On approval, the hub returns an opaque `permission.token` bound to that origin and the requested capability. The token expires after 30 seconds and is consumed on its first successful use as `permission.token=<opaque-token>` on that capability. It cannot authorize `admin` or `protected` capabilities. Both API subjects and topics are considered capabilities. Current persistent grants are inspected with `SPORE.list body=SPORE.permission` and `SPORE.state`.
 
 ---
 
@@ -202,4 +210,3 @@ SPORE.security.signature.verify path=/nodes/clock/clock signature=/nodes/clock/c
 ---
 
 *Spore OS Hub Contract v0d2 — June 2026*
-

@@ -20,7 +20,14 @@ All messages — calls and responses — share a single unified grammar. Directi
 ```
 subject [key=value ...] [flag ...] ~handle
 ```
-The caller sends a subject with optional arguments and a handle. Before forwarding to the receiver, the hub injects `cast=` identifying the originating caller.
+The caller sends a subject with optional arguments and a handle. Before forwarding to the receiver, the hub injects `cast=` identifying the caller.
+
+`cast` has two forms:
+
+- `cast=<node-id>` for a direct call. The node is both the routing actor and the original requester.
+- `cast=<actor>:<origin>` for a hub-delegated call. The actor receives the response; the origin remains the identity used for ordinary authorization and caller-owned state.
+
+The hub creates delegated casts; nodes do not supply them. `:` is reserved for this purpose and must not appear in node IDs, subject names, topic names, or custom error names.
 
 **Response (receiver → hub → caller):**
 ```
@@ -178,7 +185,7 @@ source.open ~h4 | transform.normalize | destination.write
 
 The first stage is the only stage written with a caller-supplied `~handle`; later stages must not include one. The handle identifies the entire pipeline. The hub generates internal handles for intermediate stages; their format and observability are implementation details. The caller receives only the final stage's response, under the original handle.
 
-Intermediate stages may be routed internally with `cast=<hub pipeline identity>` rather than the original caller, since the hub itself is correlating that stage's response — this is a routing implementation detail. The final stage is always forwarded with `cast=<original_caller>`, identical to a non-piped call. Regardless of the wire-level `cast=` used for internal routing, trust and permission evaluation for every stage is always performed against the original caller (see [SPEC.md §11.6](SPEC.md)).
+Intermediate stages are routed internally as `cast=SPORE.pipe:<original_caller>`, so their responses return to the hub pipeline while ordinary authorization remains tied to the original caller. The final stage is always forwarded with `cast=<original_caller>`, identical to a non-piped call. Protected operations instead evaluate the actor, allowing only the hub-internal identity designated for that capability (see [SPEC.md §11.6](SPEC.md)).
 
 For each subsequent stage, the hub forwards data fields and non-protocol flags from the preceding successful response when their names match inputs declared by that stage. Fields and flags that do not match an input are ignored. Protocol fields (`ok`, `error`, `capture`, `cast`, `code`, `what`) are never forwarded.
 

@@ -132,9 +132,15 @@ Every node has a **trust level**; every API entry and topic has a **risk level**
 
 **Trust levels:** `system` · `developer` · `trusted` · `standard` · `untrusted`
 
-**Risk levels:** `benign` · `standard` · `personal` · `secret` · `protected`
+**Risk levels:** `benign` · `standard` · `personal` · `secret` · `admin` · `protected`
 
-`benign` is open to all callers by default. `protected` is governed by a hardcoded hub whitelist and cannot be unlocked by policy. `personal` and `secret` require explicit user grants; the hub warns on first request. `developer` trust bypasses all policy — the hub warns when a `developer`-trust node connects.
+`benign` is open to all callers by default. `admin` requires fresh
+OS-authenticated user confirmation for each request. `protected` is governed by
+a hardcoded hub whitelist and cannot be unlocked by policy. `personal` and
+`secret` require explicit user grants; the hub warns on first request.
+`developer` trust bypasses all policy — installing or reinstalling a
+developer-trust node requires an explicit shell warning, followed by the fresh
+Hyphae confirmation required for administrative actions.
 
 Trust is declared in the manifest and may be overridden by the user at install time, except `system` (hardcoded whitelist only).
 

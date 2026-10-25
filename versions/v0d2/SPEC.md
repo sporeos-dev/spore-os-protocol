@@ -355,14 +355,18 @@ Trust is assigned at install time and reflects how much authority the node is gr
 | Level | Meaning |
 |---|---|
 | `system` | Hub-internal nodes only. Governed by a hardcoded hub whitelist — cannot be assigned to third-party nodes at install. |
-| `developer` | Full trust — bypasses all user preferences and policy. For local development only. The hub emits a warning whenever a `developer`-trust node connects. Do not use in production. |
+| `developer` | Bypasses manifest and binary checksum verification for local development only. Capability access remains subject to the normal permission policy. Do not use in production. |
 | `trusted` | High trust. Access governed by policy; typically broader than `standard`. |
 | `standard` | Regular trust. Expected for well-known, vetted nodes. |
 | `untrusted` | All permissions must be explicitly granted. No implicit access beyond `benign` APIs. Default for nodes without an explicit trust assignment. |
 
 Trust is set in the manifest by the node author. A user may override trust at install time — with the following constraints:
 
-- **`developer`** — the hub warns that this level bypasses all policy and should not be used for production nodes.
+- **`developer`** — installing or reinstalling a node at this level first
+  requires an explicit shell confirmation warning that it bypasses checksum
+  verification and should not be used for production nodes. The hub then
+  requires the fresh Hyphae confirmation that applies to administrative node
+  management actions.
 - **`system`** — cannot be assigned via install; reserved for the hardcoded hub whitelist.
 
 ### 11.3 Risk Levels
@@ -373,6 +377,7 @@ Trust is set in the manifest by the node author. A user may override trust at in
 | `standard` | Minor capability. Access governed by policy. |
 | `personal` | Access to personal data. Requires explicit user policy grant. Hub warns on first access request. |
 | `secret` | Access to credentials, keys, or other sensitive material. Requires explicit user policy grant. Hub warns on first access request. |
+| `admin` | User-visible control-plane action. Requires fresh OS-authenticated user confirmation before routing. |
 | `protected` | System-critical capabilities. Access governed by a hardcoded hub whitelist. Cannot be unlocked by user preferences or policy. |
 
 ### 11.4 Default Policy
@@ -383,11 +388,20 @@ Trust is set in the manifest by the node author. A user may override trust at in
 | `standard` | Policy-defined — default behaviour is determined by the caller's trust level |
 | `personal` | **Deny** by default. Requires explicit user grant. Hub warns on first grant request. |
 | `secret` | **Deny** by default. Requires explicit user grant. Hub warns on first grant request. |
+| `admin` | **Prompt** — requires fresh OS-authenticated confirmation for each request. |
 | `protected` | **Deny** to all except hub-whitelisted nodes. Cannot be overridden by user policy. |
 
 > **Known gap:** Runtime enforcement of the middle tiers (`standard`, `personal`, `secret`) and the user preference mechanism are not yet fully defined. The model and manifest fields are established in v0d2; the enforcement matrix and permission API are open issues. See [OPEN.md](OPEN.md).
 
-### 11.5 Protected Resources
+### 11.5 Administrative Resources
+
+`admin` risk capabilities are user-visible control-plane actions. Before
+routing each request, the hub asks the user-session approval provider to
+perform OS authentication for the authenticated caller and exact fully
+qualified capability. A confirmation applies only to that request; it does not
+grant a persistent capability allowance.
+
+### 11.6 Protected Resources
 
 `protected` risk capabilities and `system` trust assignments are governed by a whitelist hardcoded in the hub binary. This cannot be modified by config file or runtime call — the hub binary is the trust anchor for protected resources. Nodes not on the whitelist receive `NotPermitted` regardless of their stated trust level.
 
