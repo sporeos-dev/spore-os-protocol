@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 $schema: http://json-schema.org/draft-07/schema#
-$id: SPORE/v1d0
+$id: SPORE/v0d2
 
 title: Spore OS Manifest
 
-description: Schema for a Spore OS node manifest (SPORE/v1d0)
+description: Schema for a Spore OS node manifest (SPORE/v0d2)
 
 type: object
 
