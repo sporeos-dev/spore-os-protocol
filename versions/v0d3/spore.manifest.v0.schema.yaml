@@ -138,12 +138,12 @@ definitions:
     properties:
       name:
         type: string
-        description: "Argument name. Must not use a protocol-reserved keyword (cast, capture, error, code, what, ok, etc.) or any name beginning with spore_."
+        description: "Argument name. Must not use a protocol-reserved keyword (cast, capture, error, cancelled, code, what, ok, etc.) or use the spore. prefix."
         allOf:
           - not:
-              enum: [cast, capture, error, code, what, ok]
+              enum: [cast, capture, error, cancelled, code, what, ok]
           - not:
-              pattern: "^spore_"
+              pattern: "^spore\\."
       type:
         type: string
         description: "Type hint for this argument: string, integer, float, boolean, array, object (require a value); flag (bare token)."
@@ -169,6 +169,11 @@ definitions:
       name:
         type: string
         description: "Name of the output field."
+        allOf:
+          - not:
+              enum: [cast, capture, error, cancelled, code, what, ok]
+          - not:
+              pattern: "^spore\\."
       type:
         type: string
         description: "Type hint (string, integer, boolean, array, object, etc.)."

@@ -24,6 +24,7 @@ The hub adds `cast=` and routes the request to the node exposing the capability.
 
 Every request gets one response. On success, the hub adds `ok` and `capture=`.
 Commands with no outputs still receive `ok`.
+A successful cancellation has both `ok` and `cancelled`.
 
 ## Broadcast
 
@@ -99,6 +100,8 @@ Each node receives a normal call with resolved arguments.
 The hub forwards response fields and non-protocol flags that match the next
 stage's inputs; unmatched fields and protocol fields are not forwarded. Stages
 can also have explicit arguments and a `timeout=` override.
+If a stage returns `ok cancelled`, the hub stops the pipe and returns that
+response under the original caller's handle. Later stages are not executed.
 
 Intermediate stages use `cast=SPORE.pipe:<original_caller>`; the final stage
 uses `cast=<original_caller>`. Ordinary authorization uses the original caller;

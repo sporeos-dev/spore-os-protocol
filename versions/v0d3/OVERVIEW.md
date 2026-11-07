@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## What it is
 
-A local-first IPC protocol. Applications expose capabilities; Spore OS routes calls. Capabilities work like functions, apps like objects; a PC like a single unit.
+A local-first IPC protocol. Applications expose capabilities; Spore OS routes calls. Capabilities work like functions; apps like objects; a PC like a single unit.
 
 ---
 
