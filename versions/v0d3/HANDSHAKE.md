@@ -18,9 +18,17 @@ The hub looks up the installed node and responds:
 OK
 ```
 
-If the node is unknown or verification fails, the hub rejects the connection.
+If the node is unknown or verification fails, the hub rejects the connection
+with `FAIL`, optionally followed by a space and a human-readable reason:
+
+```text
+FAIL
+FAIL node not installed
+```
+
 For user-space verification, `OK` can arrive before the binary check finishes;
-the node receives permissions only after verification succeeds. See
+the node receives permissions only after verification succeeds, and a later
+verification failure can still produce `FAIL`. See
 [SECURITY.md](SECURITY.md#installation-and-handshake).
 
 ## Spawning

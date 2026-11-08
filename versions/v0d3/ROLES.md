@@ -26,4 +26,3 @@ Copies begin with `witness ` and include `spore.time=` and a
 `witness body="message"`; the hub adds `cast=`, `spore.time=`, and `spore.node`
 and forwards it without a response.
 
-The hub has no structured log; witness handshake failures go to stderr.
