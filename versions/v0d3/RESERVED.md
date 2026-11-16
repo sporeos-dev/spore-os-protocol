@@ -20,6 +20,10 @@ cannot be used as manifest inputs or outputs, except where noted.
 | `what` | Human-readable error description; required with `error`. |
 
 Hub-injected `cast` and `capture` are not written by nodes or callers.
+The hub rejects requests and broadcasts containing `cast=` and responses
+containing `capture=`, and emits a witness error. A rejected request with an
+identifiable handle and capability receives a `ReservedLanguage` error;
+broadcasts and responses receive no direct reply.
 
 ## Flags
 
@@ -27,7 +31,7 @@ Hub-injected `cast` and `capture` are not written by nodes or callers.
 |---|---|
 | `cancelled` | Additional flag on a successful response when the operation was cancelled. |
 | `error` | Error response flag, written by the responding node or hub. Requires `code` and `what`. |
-| `ok` | Success response flag, injected by the hub. |
+| `ok` | Success response flag, supplied by the responding node or hub. |
 | `spore.event` | Witness flag: a hub lifecycle or internal error event. |
 | `spore.error` | Witness flag: a hub or runtime error event. |
 | `spore.incoming` | Witness flag: a message received from a node before hub injection or routing. |

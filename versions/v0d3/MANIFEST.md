@@ -46,7 +46,7 @@ permissions:
 | `version` | string | No | Informational API version in `MAJOR.MINOR.PATCH` format. |
 | `trust` | string | No | Trust level; defaults to `untrusted`. See [SECURITY.md](SECURITY.md#trust-levels). |
 | `launch` | string | No | `auto` at hub start, `lazy` on first call, or `manual`; schema default: `manual`. |
-| `namespace` | string | No | Spawn in `spore` (hub space), `hyphae` (user space), or `any` (unconstrained); schema default: `hyphae`. |
+| `namespace` | string | No | Spawn in `spore` (hub space) or `hyphae` (user space); schema default: `hyphae`. |
 | `roles` | array | No | See [ROLES.md](ROLES.md). |
 | `api` | array | No | Callable capabilities. |
 | `topics` | array | No | Published topics. |
@@ -55,9 +55,9 @@ permissions:
 
 ## Capabilities
 
-`api` entries declare callable subjects; `topics` declare broadcasts. Names
-must match the subject used on the wire. See [GRAMMAR.md](GRAMMAR.md#capability)
-and [GRAMMAR.md](GRAMMAR.md#broadcast) for routing and topic ownership.
+`api` entries declare callable capabilities; `topics` declare broadcasts. See
+[GRAMMAR.md](GRAMMAR.md#capability) and [GRAMMAR.md](GRAMMAR.md#broadcast) for
+message syntax and topic ownership.
 
 ```yaml
 ...

@@ -22,7 +22,8 @@ The hub adds `cast=` and routes the request to the node exposing the capability.
 ~handle:capability [key=value ...] ok capture=node_id
 ```
 
-Every request gets one response. On success, the hub adds `ok` and `capture=`.
+Every request gets one response, with exactly one of `ok` or `error`.
+The responding node or the hub supplies that flag; the hub adds `capture=`.
 Commands with no outputs still receive `ok`.
 A successful cancellation has both `ok` and `cancelled`.
 
@@ -42,9 +43,8 @@ Broadcasts also appear in the [witness stream](ROLES.md#witness).
 
 ### Capability
 
-A capability is a single token; dots are a naming convention. Requests must
-match a manifest API name exactly. Introspection can describe partial names or
-prefixes, but they are not executable capabilities.
+A capability is a single token; dots are a naming convention. Capabilities are
+declared in node manifests.
 
 ### Prefixes
 

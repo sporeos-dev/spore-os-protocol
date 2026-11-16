@@ -81,7 +81,6 @@ properties:
     description: Set the namespace.
     default: hyphae
     enum:
-      - any
       - spore
       - hyphae
 
