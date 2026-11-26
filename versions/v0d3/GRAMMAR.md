@@ -46,6 +46,9 @@ Broadcasts also appear in the [witness stream](ROLES.md#witness).
 A capability is a single token; dots are a naming convention. Capabilities are
 declared in node manifests.
 
+A trailing `?` on a capability token requests a [hint](ROLES.md#hint)
+instead of invoking the capability, for example `clock.get_time?`.
+
 ### Prefixes
 
 `publish` starts a broadcast; `witness` starts a witness message. See

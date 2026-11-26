@@ -41,9 +41,8 @@ checksums the binary, except for `developer` nodes. During the handshake, a
 checksum mismatch denies the connection; changes to a checksummed file require
 reinstallation.
 
-For user-space verification, `OK` may be sent before the binary check
-finishes; permissions are not granted until it succeeds. See
-[HANDSHAKE.md](HANDSHAKE.md).
+The hub completes any required user-space verification before responding `OK`.
+See [HANDSHAKE.md](HANDSHAKE.md).
 
 Signature verification and the keyring are planned; checksums alone do not
 verify a publisher.

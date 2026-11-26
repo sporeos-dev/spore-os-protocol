@@ -49,9 +49,11 @@ on each copy.
 | Token | Purpose and use |
 |---|---|
 | `publish` | Line prefix used by publishers for broadcasts. The hub rejects subjects named `publish` or beginning with `publish `. |
+| `READY` | Handshake line a node sends after `OK` once its setup is done. See [HANDSHAKE.md](HANDSHAKE.md). |
 | `witness` | Line prefix used for witness traffic. The hub rejects subjects named `witness` or beginning with `witness `. |
 | `:` | Separates actor and origin in a delegated `cast`; prohibited in node IDs, subject names, and topic names. |
 | `~` | Prefix for caller-supplied handles; `~handle:subject` binds a response to a call. |
+| `?` | Capability suffix reserved for [Hint](ROLES.md#hint); capability names cannot end in `?`. |
 | `\|` | Pipe separator, resolved by the hub. |
 
 ## Namespaces and prefixes
